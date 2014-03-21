@@ -1306,7 +1306,7 @@ static struct rkdisplay_platform_data tv_data = {
 	.property 		= DISPLAY_MAIN,
 	.video_source 	= DISPLAY_SOURCE_LCDC0,
 	.io_pwr_pin 	= INVALID_GPIO,
-	.io_reset_pin 	= RK30_PIN3_PD4,
+	.io_reset_pin 	= RK30_PIN3_PD7,
 	.io_switch_pin	= RK30_PIN2_PD7,
 };
 #endif
