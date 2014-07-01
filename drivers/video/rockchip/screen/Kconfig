@@ -191,6 +191,9 @@ config LCD_B080XAN02_MIPI
 	bool "mipi dsi lcd B080XAN02 1024X768"	
 config LCD_RK3168_FAC
         bool "RK3168 for factoryTool"     
+config LCD_RADXA_LVDS_1024_600
+	bool "1024x600 LVDS display provided by radxa"
+
 endchoice
 
 
