@@ -16,6 +16,9 @@ choice
 	prompt "RK3188 Board Type"
 	depends on SOC_RK3188
 
+config MACH_RK3188_RADXA_ROCK
+	bool "Radxa Rock"
+
 config MACH_RK3188_TB
 	bool "RK3188 Top Board"
 
