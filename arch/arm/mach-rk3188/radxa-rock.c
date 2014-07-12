@@ -541,11 +541,19 @@ static struct rk_hdmi_platform_data rk_hdmi_pdata = {
 
 #ifdef CONFIG_FB_ROCKCHIP
 
+#ifdef CONFIG_MACH_RK3188_RADXA_ROCK_PRO
 #define LCD_CS_PIN         RK30_PIN2_PD6
 #define LCD_CS_VALUE       GPIO_HIGH
 
 #define LCD_EN_PIN         RK30_PIN0_PB0
 #define LCD_EN_VALUE       GPIO_LOW
+#else
+#define LCD_CS_PIN         INVALID_GPIO
+#define LCD_CS_VALUE       GPIO_HIGH
+
+#define LCD_EN_PIN         INVALID_GPIO
+#define LCD_EN_VALUE       GPIO_LOW
+#endif /* CONFIG_MACH_RK3188_RADXA_ROCK_PRO */
 
 static int rk_fb_io_init(struct rk29_fb_setting_info *fb_setting)
 {
@@ -1519,18 +1527,6 @@ static struct i2c_board_info __initdata i2c0_info[] = {
 		.platform_data = &l3g4200d_info,
 	},
 #endif
-#if defined (CONFIG_SND_SOC_RK1000)
-	{
-		.type          = "rk1000_i2c_codec",
-		.addr          = 0x60,
-		.flags         = 0,
-	},
-	{
-		.type          = "rk1000_control",
-		.addr          = 0x40,
-		.flags         = 0,
-	},
-#endif
 #if defined (CONFIG_SND_SOC_RT5631)
         {
                 .type                   = "rt5631",
@@ -2095,8 +2091,32 @@ static struct i2c_board_info __initdata i2c4_info[] = {
      },
     #endif
 
+#if defined (CONFIG_MFD_RK1000)
+	{
+		.type			= "rk1000_control",
+		.addr			= 0x40,
+		.flags			= 0,
+		.platform_data = &tv_data,
+	},
+#ifdef CONFIG_RK1000_TVOUT
+    {
+		.type           = "rk1000_tvout",
+		.addr           = 0x42,
+		.flags          = 0,
+		.platform_data = &tv_data,
+    },
+#endif /* CONFIG_RK1000_TVOUT */
+#ifdef CONFIG_SND_SOC_RK1000
+    {
+		.type           = "rk1000_i2c_codec",
+		.addr           = 0x60,
+		.flags          = 0,
+		.platform_data = &tv_data,
+    },
+#endif /* CONFIG_SND_SOC_RK1000 */
+#endif /* CONFIG_MFD_RK1000 */
 };
-#endif
+#endif /* CONFIG_I2C4_RK30 */
 
 #ifdef CONFIG_I2C_GPIO_RK30
 #define I2C_SDA_PIN     INVALID_GPIO// RK30_PIN2_PD6   //set sda_pin here

@@ -194,6 +194,19 @@ config LCD_RK3168_FAC
 config LCD_RADXA_LVDS_1024_600
 	bool "1024x600 LVDS display provided by radxa"
 
+config HDMI_FB_480P
+	bool "HDMI framebuffer size and timing is 480p"
+	---help---
+	HDMI framebuffer size and timing as 720x480p-60 if you say yes
+config HDMI_FB_720P
+	bool "HDMI framebuffer size and timing is 720p"
+	---help---
+	HDMI framebuffer size and timing as 1280x720p-60 if you say yes
+config HDMI_FB_1080P
+	bool "HDMI framebuffer size and timing is 1080p"
+	---help---
+	HDMI framebuffer size and timing as 1920x1080p-60 if you say yes
+
 endchoice
 
 
