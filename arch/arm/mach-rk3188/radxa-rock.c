@@ -64,6 +64,9 @@
 #if defined(CONFIG_GPS_RK)
 #include "../../../drivers/misc/gps/rk_gps/rk_gps.h"
 #endif
+#ifdef CONFIG_RK_REMOTECTL
+#include <plat/remotectl.h>
+#endif
 #if defined(CONFIG_MU509)
 #include <linux/mu509.h>
 #endif
@@ -1126,6 +1129,29 @@ static struct platform_device rk30_device_adc_battery = {
 };
 #endif
 
+#ifdef CONFIG_RK_REMOTECTL
+
+void rk30_remotectl_iomux(void)
+{
+	;
+}
+
+struct RKxx_remotectl_platform_data rk30_remotectl_pdata = {
+    .gpio	=   RK30_PIN0_PB2,
+    .wakeup	= 1,
+    .rep    = 0,
+    .set_iomux = rk30_remotectl_iomux,
+};
+
+static struct platform_device rk30_device_remotectl = {
+	.name		= "rkxx-remotectl",
+	.id		= -1,
+	.dev		= {
+		.platform_data	= &rk30_remotectl_pdata,
+	},
+};
+#endif
+
 #if defined(CONFIG_MFD_RK616)
 #define RK616_SCL_RATE			(100*1000)   //i2c scl rate
 static struct rk616_platform_data rk616_pdata = {
@@ -1449,6 +1475,9 @@ static struct platform_device *devices[] __initdata = {
 #endif
 #if defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT6622)
 	&device_mt6622,
+#endif
+#ifdef CONFIG_RK_REMOTECT
+    &rk30_device_remotectl,
 #endif
 };
 
