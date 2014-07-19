@@ -1,87 +1,134 @@
-#define grf_readl(offset)	readl_relaxed(RK30_GRF_BASE + offset)
-#define grf_writel(v, offset)	do { writel_relaxed(v, RK30_GRF_BASE + offset); dsb(); } while (0)
+
 
 static int rk30_vmac_register_set(void)
 {
 	//config rk30 vmac as rmii
 	writel_relaxed(0x3 << 16 | 0x2, RK30_GRF_BASE + GRF_SOC_CON1);
+	int val = readl_relaxed(RK30_GRF_BASE + GRF_IO_CON3);
+	writel_relaxed(val | 0xf << 16 | 0xf, RK30_GRF_BASE + GRF_IO_CON3);
 	return 0;
 }
 
 static int rk30_rmii_io_init(void)
 {
 	int err;
-	printk("enter %s ",__func__);
-	iomux_set(GPIO0_C0);//power pwr
-	iomux_set(GPIO3_D2);//int
-	
-	iomux_set(RMII_MD);//IO3_D0
-	iomux_set(RMII_MDCLK);//IO3_D1
-      
+
+	iomux_set(RMII_TXEN);
+	iomux_set(RMII_TXD1);
+	iomux_set(RMII_TXD0);
 	iomux_set(RMII_RXD0);
 	iomux_set(RMII_RXD1);
-	iomux_set(RMII_CRS);
+#if defined (CONFIG_RK29_VMAC_EXT_CLK)
+	iomux_set(RMII_CLKIN);
+#else
+    iomux_set(RMII_CLKOUT);
+#endif
 	iomux_set(RMII_RXERR);
-	iomux_set(RMII_TXD0);
-	iomux_set(RMII_TXD1);
-	iomux_set(RMII_TXEN);
-	iomux_set(RMII_CLKOUT);
+	iomux_set(RMII_CRS);
+	iomux_set(RMII_MD);
+	iomux_set(RMII_MDCLK);
+	iomux_set(GPIO3_D2);
+#if 0
+	//iomux_set(GPIO3_B5);
+	iomux_set(GPIO0_C0);
 
-	//rk3188 gpio3 and sdio drive strength , 
-      grf_writel(0x0f<16|0x0f,GRF_IO_CON3);
-      
 	//phy power gpio
 	err = gpio_request(PHY_PWR_EN_GPIO, "phy_power_en");
 	if (err) {
-	      printk("request phy power en pin faile ! \n");
 		return -1;
 	}
 	//phy power down
-	gpio_direction_output(PHY_PWR_EN_GPIO, !PHY_PWR_EN_VALUE);
-	gpio_set_value(PHY_PWR_EN_GPIO, !PHY_PWR_EN_VALUE);
+	gpio_direction_output(PHY_PWR_EN_GPIO, GPIO_LOW);
+	gpio_set_value(PHY_PWR_EN_GPIO, GPIO_LOW);
+#endif
+	err = gpio_request(RK30_PIN0_PC0, "rmii_rst");
+	if (err) {
+		return -1;
+	}
 
+	gpio_direction_input(RK30_PIN0_PC0);
 	return 0;
 }
 
+struct regulator *ldo_33;
+
 static int rk30_rmii_io_deinit(void)
 {
+#if 0
 	//phy power down
-	printk("enter %s ",__func__);
-	gpio_direction_output(PHY_PWR_EN_GPIO, !PHY_PWR_EN_VALUE);
-	gpio_set_value(PHY_PWR_EN_GPIO, !PHY_PWR_EN_VALUE);
+	gpio_direction_output(PHY_PWR_EN_GPIO, GPIO_LOW);
+	gpio_set_value(PHY_PWR_EN_GPIO, GPIO_LOW);
 	//free
 	gpio_free(PHY_PWR_EN_GPIO);
+#else
+	regulator_disable(ldo_33);
+	regulator_put(ldo_33);
+#endif
 	return 0;
 }
 
 static int rk30_rmii_power_control(int enable)
 {
-      printk("enter %s ,enable = %d ",__func__,enable);
+#if defined (CONFIG_REGULATOR_ACT8846)
+		if(pmic_is_act8846())
+				ldo_33 = regulator_get(NULL, "act_ldo5");
+#endif
+#if defined (CONFIG_MFD_RK808)
+		if(pmic_is_rk808())
+				ldo_33 = regulator_get(NULL, "rk_ldo2");
+#endif
+
+	if (ldo_33 == NULL || IS_ERR(ldo_33)){
+		printk("get rmii ldo failed!\n");
+		return -1;
+	}
+
 	if (enable) {
 		//enable phy power
 		printk("power on phy\n");
-		iomux_set(GPIO0_C0);//power pwr
-        	iomux_set(GPIO3_D2);//int
-        	
-        	iomux_set(RMII_MD);//IO3_D0
-        	iomux_set(RMII_MDCLK);//IO3_D1
-              
-        	iomux_set(RMII_RXD0);
-        	iomux_set(RMII_RXD1);
-        	iomux_set(RMII_CRS);
-        	iomux_set(RMII_RXERR);
-        	iomux_set(RMII_TXD0);
-        	iomux_set(RMII_TXD1);
-        	iomux_set(RMII_TXEN);
-        	iomux_set(RMII_CLKOUT);
-	
-		gpio_direction_output(PHY_PWR_EN_GPIO, PHY_PWR_EN_VALUE);
-		gpio_set_value(PHY_PWR_EN_GPIO, PHY_PWR_EN_VALUE);
 
-		//gpio reset		
+		iomux_set(RMII_TXEN);
+		iomux_set(RMII_TXD1);
+		iomux_set(RMII_TXD0);
+		iomux_set(RMII_RXD0);
+		iomux_set(RMII_RXD1);
+#if defined (CONFIG_RK29_VMAC_EXT_CLK)
+		iomux_set(RMII_CLKIN);
+#else
+        iomux_set(RMII_CLKOUT);
+#endif
+		iomux_set(RMII_RXERR);
+		iomux_set(RMII_CRS);
+		iomux_set(RMII_MD);
+		iomux_set(RMII_MDCLK);
+		iomux_set(GPIO3_D2);
+#if 1
+		//regulator_set_voltage(ldo_33, 3300000, 300000);
+		if (ldo_33 && (!regulator_is_enabled(ldo_33))) {
+			regulator_enable(ldo_33);
+			regulator_put(ldo_33);
+		}
+
+		//gpio_direction_output(RK30_PIN3_PD2, GPIO_LOW);
+		gpio_set_value(RK30_PIN3_PD2, GPIO_LOW);
+		msleep(20);
+		gpio_set_value(RK30_PIN3_PD2, GPIO_HIGH);
+#else
+		iomux_set(GPIO0_C0);
+
+		gpio_direction_output(PHY_PWR_EN_GPIO, GPIO_HIGH);
+		gpio_set_value(PHY_PWR_EN_GPIO, GPIO_HIGH);
+#endif
 	}else {
-		gpio_direction_output(PHY_PWR_EN_GPIO, !PHY_PWR_EN_VALUE);
-		gpio_set_value(PHY_PWR_EN_GPIO, !PHY_PWR_EN_VALUE);
+#if 1
+		if (ldo_33 && (regulator_is_enabled(ldo_33))) {
+			regulator_disable(ldo_33);
+			regulator_put(ldo_33);
+		}
+#else
+		gpio_direction_output(PHY_PWR_EN_GPIO, GPIO_LOW);
+		gpio_set_value(PHY_PWR_EN_GPIO, GPIO_LOW);
+#endif
 	}
 	return 0;
 }
@@ -89,10 +136,11 @@ static int rk30_rmii_power_control(int enable)
 #define BIT_EMAC_SPEED      (1 << 1)
 static int rk29_vmac_speed_switch(int speed)
 {
+	//printk("%s--speed=%d\n", __FUNCTION__, speed);
 	if (10 == speed) {
-	    writel_relaxed(readl_relaxed(RK30_GRF_BASE + GRF_SOC_CON1) & (~BIT_EMAC_SPEED), RK30_GRF_BASE + GRF_SOC_CON1);
+	    writel_relaxed(readl_relaxed(RK30_GRF_BASE + GRF_SOC_CON1) & (~BIT_EMAC_SPEED) | (BIT_EMAC_SPEED << 16), RK30_GRF_BASE + GRF_SOC_CON1);
 	} else {
-	    writel_relaxed(readl_relaxed(RK30_GRF_BASE + GRF_SOC_CON1) | ( BIT_EMAC_SPEED), RK30_GRF_BASE + GRF_SOC_CON1);
+	    writel_relaxed(readl_relaxed(RK30_GRF_BASE + GRF_SOC_CON1) | ( BIT_EMAC_SPEED) | (BIT_EMAC_SPEED << 16), RK30_GRF_BASE + GRF_SOC_CON1);
 	}
 }
 
