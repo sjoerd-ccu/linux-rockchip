@@ -776,6 +776,23 @@ static struct gpio_led rk29_leds[] = {
 		.retain_state_suspended = 0,
 		.default_state = LEDS_GPIO_DEFSTATE_OFF,
 	},
+	{
+		.name = "green",
+		.default_trigger = "heartbeat",
+		.gpio = RK30_PIN0_PB4,
+		.active_low = 1,
+	},
+	{
+		.name = "blue",
+		.default_trigger = "mmc0",
+		.gpio = RK30_PIN0_PB6,
+		.active_low = 1,
+	},
+	{
+		.name = "red",
+		.gpio = RK30_PIN0_PB7,
+		.default_state = LEDS_GPIO_DEFSTATE_ON,
+	},
 };
 
 static struct gpio_led_platform_data rk29_leds_pdata = {
