@@ -12,6 +12,12 @@ static int rk30_vmac_register_set(void)
 static int rk30_rmii_io_init(void)
 {
 	int err;
+	struct regulator *ldo_33 = regulator_get(NULL, "act_ldo5");
+
+	if (ldo_33 == NULL || IS_ERR(ldo_33)){
+		printk("get rmii ldo failed!\n");
+		return -1;
+	}
 
 	iomux_set(RMII_TXEN);
 	iomux_set(RMII_TXD1);
@@ -28,7 +34,19 @@ static int rk30_rmii_io_init(void)
 	iomux_set(RMII_MD);
 	iomux_set(RMII_MDCLK);
 	iomux_set(GPIO3_D2);
+
+	regulator_disable(ldo_33);
+	regulator_put(ldo_33);
+
+	err = gpio_request(RK30_PIN3_PD2, "rmii_int");
+	if (err) {
+		return -1;
+	}
+	gpio_direction_output(RK30_PIN3_PD2, GPIO_LOW);
+	gpio_set_value(RK30_PIN3_PD2, GPIO_LOW);
 #if 0
+	int err;
+
 	//iomux_set(GPIO3_B5);
 	iomux_set(GPIO0_C0);
 
@@ -41,16 +59,8 @@ static int rk30_rmii_io_init(void)
 	gpio_direction_output(PHY_PWR_EN_GPIO, GPIO_LOW);
 	gpio_set_value(PHY_PWR_EN_GPIO, GPIO_LOW);
 #endif
-	err = gpio_request(RK30_PIN0_PC0, "rmii_rst");
-	if (err) {
-		return -1;
-	}
-
-	gpio_direction_input(RK30_PIN0_PC0);
 	return 0;
 }
-
-struct regulator *ldo_33;
 
 static int rk30_rmii_io_deinit(void)
 {
@@ -61,22 +71,17 @@ static int rk30_rmii_io_deinit(void)
 	//free
 	gpio_free(PHY_PWR_EN_GPIO);
 #else
+	struct regulator *ldo_33 = regulator_get(NULL, "act_ldo5");
 	regulator_disable(ldo_33);
 	regulator_put(ldo_33);
+	gpio_set_value(RK30_PIN3_PD2, GPIO_LOW);
 #endif
 	return 0;
 }
 
 static int rk30_rmii_power_control(int enable)
 {
-#if defined (CONFIG_REGULATOR_ACT8846)
-		if(pmic_is_act8846())
-				ldo_33 = regulator_get(NULL, "act_ldo5");
-#endif
-#if defined (CONFIG_MFD_RK808)
-		if(pmic_is_rk808())
-				ldo_33 = regulator_get(NULL, "rk_ldo2");
-#endif
+	struct regulator *ldo_33 = regulator_get(NULL, "act_ldo5");
 
 	if (ldo_33 == NULL || IS_ERR(ldo_33)){
 		printk("get rmii ldo failed!\n");
@@ -92,9 +97,9 @@ static int rk30_rmii_power_control(int enable)
 		iomux_set(RMII_TXD0);
 		iomux_set(RMII_RXD0);
 		iomux_set(RMII_RXD1);
-#if defined (CONFIG_RK29_VMAC_EXT_CLK)
+#if defined (CONFIG_RK29_VMAC_EXT_CLK)        
 		iomux_set(RMII_CLKIN);
-#else
+#else 
         iomux_set(RMII_CLKOUT);
 #endif
 		iomux_set(RMII_RXERR);
@@ -104,12 +109,12 @@ static int rk30_rmii_power_control(int enable)
 		iomux_set(GPIO3_D2);
 #if 1
 		//regulator_set_voltage(ldo_33, 3300000, 300000);
-		if (ldo_33 && (!regulator_is_enabled(ldo_33))) {
+		if (!regulator_is_enabled(ldo_33)) {
 			regulator_enable(ldo_33);
 			regulator_put(ldo_33);
 		}
-
-		//gpio_direction_output(RK30_PIN3_PD2, GPIO_LOW);
+		msleep(500);
+		gpio_direction_output(RK30_PIN3_PD2, GPIO_LOW);
 		gpio_set_value(RK30_PIN3_PD2, GPIO_LOW);
 		msleep(20);
 		gpio_set_value(RK30_PIN3_PD2, GPIO_HIGH);
@@ -121,10 +126,12 @@ static int rk30_rmii_power_control(int enable)
 #endif
 	}else {
 #if 1
-		if (ldo_33 && (regulator_is_enabled(ldo_33))) {
+		if (regulator_is_enabled(ldo_33)) {
 			regulator_disable(ldo_33);
 			regulator_put(ldo_33);
 		}
+		msleep(500);
+		gpio_set_value(RK30_PIN3_PD2, GPIO_LOW);
 #else
 		gpio_direction_output(PHY_PWR_EN_GPIO, GPIO_LOW);
 		gpio_set_value(PHY_PWR_EN_GPIO, GPIO_LOW);
