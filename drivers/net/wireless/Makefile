@@ -23,3 +23,4 @@ obj-$(CONFIG_MT7601)	+= rkusbwifi/
 obj-$(CONFIG_MTK_COMBO_WIFI)	+= combo_mt66xx/
 obj-$(CONFIG_MTK_MT5931)	+= mt5931_kk/
 obj-$(CONFIG_ESP8089)   += esp8089/
+obj-$(CONFIG_RTL8723AU_LW)	+= rtl8723au_lwfinger/
