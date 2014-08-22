@@ -61,6 +61,9 @@
 int vmac_create_sysfs(struct vmac_priv *ap);
 #endif
 
+static unsigned char mac_addr[6] = {0x00};
+static char *mac_addr_param = ":";
+
 static struct wake_lock idlelock; /* add by lyx @ 20110302 */
 
 static struct class *vmac_class = NULL;
@@ -1627,6 +1630,24 @@ static int __devinit vmac_probe(struct platform_device *pdev)
 	//add end	
 	}
 
+	/* if kernel parameter has mac address, set it */
+	if (strlen(mac_addr_param) == 17) {
+		int i;
+		char *p = mac_addr_param;
+
+		for (i = 0; i < 6; i++, p++)
+			mac_addr[i] = simple_strtoul(p, &p, 16);
+
+		if (is_valid_ether_addr(mac_addr)) {
+
+			memcpy(dev->dev_addr, mac_addr, 6);
+
+			printk("eth mac from kernel cmdline: %X:%X:%X:%X:%X:%X\n",dev->dev_addr[0],
+					dev->dev_addr[1],dev->dev_addr[2],dev->dev_addr[3],
+					dev->dev_addr[4],dev->dev_addr[5] );
+		}
+	}
+
 	err = register_netdev(dev);
 	if (err) {
 		dev_err(&pdev->dev, "Cannot register net device, aborting.\n");
@@ -1696,6 +1717,7 @@ static int __devexit vmac_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#if 0
 static void rk29_vmac_power_off(struct net_device *dev)
 {
 	struct vmac_priv *ap = netdev_priv(dev);
@@ -1715,6 +1737,7 @@ static void rk29_vmac_power_off(struct net_device *dev)
 	clk_disable(clk_get(NULL,"mac_ref"));
 
 }
+#endif
 
 static int
 rk29_vmac_suspend(struct device *dev)
@@ -1790,3 +1813,8 @@ module_exit(vmac_exit);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("RK29 VMAC Ethernet driver");
 MODULE_AUTHOR("amit.bhor@celunite.com, sameer.dhavale@celunite.com, andreas.fenkart@streamunlimited.com");
+
+#undef MODULE_PARAM_PREFIX
+#define MODULE_PARAM_PREFIX /* empty */
+module_param_named(mac_addr, mac_addr_param, charp, 0);
+MODULE_PARM_DESC(mac_addr, "MAC address");
