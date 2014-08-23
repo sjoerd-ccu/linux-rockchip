@@ -19,7 +19,7 @@
 #include <linux/rk_fb.h>
 
 /* default HDMI output video mode */
-#define HDMI_VIDEO_DEFAULT_MODE			HDMI_1280x720p_60Hz//HDMI_1920x1080p_60Hz
+#define HDMI_VIDEO_DEFAULT_MODE			HDMI_1920x1080p_60Hz
 
 // HDMI video source
 enum {
