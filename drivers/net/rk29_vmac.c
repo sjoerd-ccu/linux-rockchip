@@ -1134,6 +1134,9 @@ int vmac_open(struct net_device *dev)
 	temp = (RX_BDT_LEN << 24) | (TX_BDT_LEN << 16) | TXRN_MASK | RXRN_MASK;
 	vmac_writel(ap, temp, CONTROL);
 
+        /* lock up fix enable*/
+        vmac_writel(ap, vmac_readl(ap, EXT1) | (1<<23), EXT1);
+
 	/* enable, after all other bits are set */
 	vmac_writel(ap, temp | EN_MASK, CONTROL);
 	

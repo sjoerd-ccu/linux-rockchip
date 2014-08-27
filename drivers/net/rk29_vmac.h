@@ -67,6 +67,8 @@
 #define MDIO_DATA_OFFSET	(0x34/0x4)
 #define MAC_TXRING_HEAD_OFFSET	(0x38/0x4)
 #define MAC_RXRING_HEAD_OFFSET	(0x3C/0x4)
+#define EXT1_OFFSET  (0x40/0x4)
+#define EXT2_OFFSET  (0x44/0x4)
 
 /* STATUS and ENABLE register bit masks */
 #define TXINT_MASK		(1<<0)	/* Transmit interrupt */
