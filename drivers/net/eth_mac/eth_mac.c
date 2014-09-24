@@ -143,13 +143,14 @@ static void  trans( char *src ,int * k)
 
 }
 
-/*int eth_mac_wifi(u8 *eth_mac){
+int eth_mac_wifi(u8 *eth_mac){
 	int i;
 	struct  file *file = NULL;
 	char wifi_mac[32];
 	mm_segment_t old_fs;
 	ssize_t ret;
-	int maci[6];
+
+	int *maci=(int *)kmalloc(6, GFP_KERNEL);
 
 	memset(eth_mac, 0, 6);
 	
@@ -186,10 +187,11 @@ static void  trans( char *src ,int * k)
            	 return -ENOENT;
         }
 
+	kfree(maci);
 	filp_close(file,NULL);
 	return 0;
 	
-}*/
+}
 
 
 
