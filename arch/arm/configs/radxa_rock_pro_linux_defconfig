@@ -2637,8 +2637,8 @@ CONFIG_USB_DEVICE_CLASS=y
 #
 # USB Device Class drivers
 #
-# CONFIG_USB_ACM is not set
-# CONFIG_USB_PRINTER is not set
+CONFIG_USB_ACM=m
+CONFIG_USB_PRINTER=m
 # CONFIG_USB_WDM is not set
 # CONFIG_USB_TMC is not set
 
@@ -2739,7 +2739,7 @@ CONFIG_USB_SERIAL_USI=m
 # CONFIG_USB_SEVSEG is not set
 # CONFIG_USB_RIO500 is not set
 # CONFIG_USB_LEGOTOWER is not set
-# CONFIG_USB_LCD is not set
+CONFIG_USB_LCD=m
 # CONFIG_USB_LED is not set
 # CONFIG_USB_CYPRESS_CY7C63 is not set
 # CONFIG_USB_CYTHERM is not set
