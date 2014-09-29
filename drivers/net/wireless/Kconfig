@@ -221,5 +221,15 @@ config RTL8723AU_LW
 	---help---
 	  Help message of RTL8723AU
 
+config RTL8188EU_LW
+	tristate "Realtek 8188EU USB WiFi Support"
+	depends on USB
+    select WIRELESS_EXT
+    select WEXT_PRIV
+    select IEEE80211
+    select BT_RTKBTUSB
+    select UHID
+	---help---
+	  Help message of RTL8188EU
 endif
 
