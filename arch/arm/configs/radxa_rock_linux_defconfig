@@ -1263,6 +1263,7 @@ CONFIG_WIFI_NONE=y
 # CONFIG_ESP8089 is not set
 # CONFIG_RKWIFI is not set
 CONFIG_RTL8723AU_LW=m
+CONFIG_RTL8188EU_LW=m
 
 #
 # Enable WiMAX (Networking options) to see the WiMAX drivers
