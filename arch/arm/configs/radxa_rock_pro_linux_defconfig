@@ -2292,7 +2292,7 @@ CONFIG_DVB_IX2505V=m
 #
 # Graphics support
 #
-# CONFIG_DRM is not set
+CONFIG_DRM=m
 CONFIG_ION=y
 CONFIG_ION_ROCKCHIP=y
 # CONFIG_VGASTATE is not set
