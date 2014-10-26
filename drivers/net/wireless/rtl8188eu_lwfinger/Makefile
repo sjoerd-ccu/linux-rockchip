@@ -134,11 +134,11 @@ rtk_core :=				\
 
 8188eu-y += $(_OS_INTFS_FILES)
 
-obj-$(CONFIG_RTL8188EU) := 8188eu.o
+obj-$(CONFIG_RTL8188EU_LW) := 8188eu.o
 
 else
 
-export CONFIG_RTL8188EU = m
+export CONFIG_RTL8188EU_LW = m
 
 all: modules
 
