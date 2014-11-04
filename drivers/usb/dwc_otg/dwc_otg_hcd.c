@@ -30,6 +30,25 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
  * DAMAGE.
  * ========================================================================== */
+
+/*
+ * dwc_otg_hcd_{,un}map_urb_for_dma() and {alloc,free}_temp_buffer() are
+ * derived from drivers/usb/host/ehci-tegra.c
+ *
+ * Copyright (C) 2010 Google, Inc.
+ * Copyright (C) 2009 NVIDIA Corporation
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation; either version 2 of the License, or (at your
+ * option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ */
 #ifndef DWC_DEVICE_ONLY
 
 /**
@@ -200,6 +219,94 @@ static int dwc_otg_hcd_resume(struct usb_hcd *hcd)
 	return 0;
 }
 
+#define DWC_OTG_HCD_DMA_ALIGN 4
+
+struct temp_buffer {
+	void *kmalloc_ptr;
+	void *old_xfer_buffer;
+	u8 data[0];
+};
+
+static void free_temp_buffer(struct urb *urb)
+{
+	enum dma_data_direction dir;
+	struct temp_buffer *temp;
+
+	if (!(urb->transfer_flags & URB_ALIGNED_TEMP_BUFFER))
+		return;
+
+	dir = usb_urb_dir_in(urb) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
+
+	temp = container_of(urb->transfer_buffer, struct temp_buffer,
+			    data);
+
+	if (dir == DMA_FROM_DEVICE)
+		memcpy(temp->old_xfer_buffer, temp->data,
+		       urb->transfer_buffer_length);
+	urb->transfer_buffer = temp->old_xfer_buffer;
+	kfree(temp->kmalloc_ptr);
+
+	urb->transfer_flags &= ~URB_ALIGNED_TEMP_BUFFER;
+}
+
+static int alloc_temp_buffer(struct urb *urb, gfp_t mem_flags)
+{
+	enum dma_data_direction dir;
+	struct temp_buffer *temp, *kmalloc_ptr;
+	size_t kmalloc_size;
+
+	if (urb->num_sgs || urb->sg ||
+	    urb->transfer_buffer_length == 0 ||
+	    !((uintptr_t)urb->transfer_buffer & (DWC_OTG_HCD_DMA_ALIGN - 1)))
+		return 0;
+
+	dir = usb_urb_dir_in(urb) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
+
+	/* Allocate a buffer with enough padding for alignment */
+	kmalloc_size = urb->transfer_buffer_length +
+		sizeof(struct temp_buffer) + DWC_OTG_HCD_DMA_ALIGN - 1;
+
+	kmalloc_ptr = kmalloc(kmalloc_size, mem_flags);
+	if (!kmalloc_ptr)
+		return -ENOMEM;
+
+	/* Position our struct temp_buffer such that data is aligned */
+	temp = PTR_ALIGN(kmalloc_ptr + 1, DWC_OTG_HCD_DMA_ALIGN) - 1;
+
+	temp->kmalloc_ptr = kmalloc_ptr;
+	temp->old_xfer_buffer = urb->transfer_buffer;
+	if (dir == DMA_TO_DEVICE)
+		memcpy(temp->data, urb->transfer_buffer,
+		       urb->transfer_buffer_length);
+	urb->transfer_buffer = temp->data;
+
+	urb->transfer_flags |= URB_ALIGNED_TEMP_BUFFER;
+
+	return 0;
+}
+
+static int dwc_otg_hcd_map_urb_for_dma(struct usb_hcd *hcd, struct urb *urb,
+				       gfp_t mem_flags)
+{
+	int ret;
+
+	ret = alloc_temp_buffer(urb, mem_flags);
+	if (ret)
+		return ret;
+
+	ret = usb_hcd_map_urb_for_dma(hcd, urb, mem_flags);
+	if (ret)
+		free_temp_buffer(urb);
+
+	return ret;
+}
+
+static void dwc_otg_hcd_unmap_urb_for_dma(struct usb_hcd *hcd, struct urb *urb)
+{
+	usb_hcd_unmap_urb_for_dma(hcd, urb);
+	free_temp_buffer(urb);
+}
+
 static const char dwc_otg_hcd_name [] = "dwc_otg_hcd";
 
 static const struct hc_driver dwc_otg_hc_driver = {
@@ -229,6 +336,8 @@ static const struct hc_driver dwc_otg_hc_driver = {
 
 	.urb_enqueue =		dwc_otg_hcd_urb_enqueue,
 	.urb_dequeue =		dwc_otg_hcd_urb_dequeue,
+	.map_urb_for_dma =	dwc_otg_hcd_map_urb_for_dma,
+	.unmap_urb_for_dma =	dwc_otg_hcd_unmap_urb_for_dma,
 	.endpoint_disable =	dwc_otg_hcd_endpoint_disable,
 
 	.get_frame_number =	dwc_otg_hcd_get_frame_number,
@@ -267,6 +376,8 @@ static const struct hc_driver host11_hc_driver = {
 
 	.urb_enqueue =		dwc_otg_hcd_urb_enqueue,
 	.urb_dequeue =		dwc_otg_hcd_urb_dequeue,
+	.map_urb_for_dma =	dwc_otg_hcd_map_urb_for_dma,
+	.unmap_urb_for_dma =	dwc_otg_hcd_unmap_urb_for_dma,
 	.endpoint_disable =	dwc_otg_hcd_endpoint_disable,
 
 	.get_frame_number =	dwc_otg_hcd_get_frame_number,
@@ -305,6 +416,8 @@ static const struct hc_driver host20_hc_driver = {
 
 	.urb_enqueue =		dwc_otg_hcd_urb_enqueue,
 	.urb_dequeue =		dwc_otg_hcd_urb_dequeue,
+	.map_urb_for_dma =	dwc_otg_hcd_map_urb_for_dma,
+	.unmap_urb_for_dma =	dwc_otg_hcd_unmap_urb_for_dma,
 	.endpoint_disable =	dwc_otg_hcd_endpoint_disable,
 
 	.get_frame_number =	dwc_otg_hcd_get_frame_number,
