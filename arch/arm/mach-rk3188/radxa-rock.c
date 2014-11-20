@@ -1493,7 +1493,7 @@ static struct platform_device *devices[] __initdata = {
 #if defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT6622)
 	&device_mt6622,
 #endif
-#ifdef CONFIG_RK_REMOTECT
+#ifdef CONFIG_RK_REMOTECTL
     &rk30_device_remotectl,
 #endif
 };
