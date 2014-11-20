@@ -1982,7 +1982,7 @@ static struct i2c_board_info __initdata i2c1_info[] = {
 		.type                   = "rtc_hym8563",
 		.addr           = 0x51,
 		.flags                  = 0,
-		.irq            = RK30_PIN1_PA4,
+		.irq            = RK30_PIN0_PB5,
 	},
 #endif
 
