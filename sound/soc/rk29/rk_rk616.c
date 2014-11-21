@@ -292,7 +292,7 @@ static int __init audio_card_init(void)
 	if (rk616_get_for_mid())
 		snd_soc_card_rk.name = "RK_RK616_TINY";
 
-	rk_snd_device = platform_device_alloc("soc-audio", -1);
+	rk_snd_device = platform_device_alloc("soc-audio", -2);
 	if (!rk_snd_device) {
 		  printk("platform device allocation failed\n");
 		  return -ENOMEM;

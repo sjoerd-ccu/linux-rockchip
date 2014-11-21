@@ -138,7 +138,7 @@ static int __init rk_spdif_init(void)
 	if (ret)
 		goto err1;
 
-	rk_snd_spdif_device = platform_device_alloc("soc-audio", -3);
+	rk_snd_spdif_device = platform_device_alloc("soc-audio", -4);
 	if (!rk_snd_spdif_device) {
 		printk("spdif:platform_device_alloc rk_soc-audio\n");
 		ret = -ENOMEM;
