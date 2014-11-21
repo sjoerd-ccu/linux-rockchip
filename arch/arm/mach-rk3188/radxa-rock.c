@@ -2126,6 +2126,15 @@ static struct i2c_board_info __initdata i2c3_info[] = {
 };
 #endif
 
+
+#if defined (CONFIG_MFD_RK1000)
+static struct rkdisplay_platform_data tv_data = {
+    .io_pwr_pin     = INVALID_GPIO,
+    .io_reset_pin   = RK30_PIN3_PD7,
+    .io_switch_pin  = INVALID_GPIO,
+};
+#endif
+
 #ifdef CONFIG_I2C4_RK30
 static struct i2c_board_info __initdata i2c4_info[] = {
     #if defined (CONFIG_SND_SOC_RT5616)
