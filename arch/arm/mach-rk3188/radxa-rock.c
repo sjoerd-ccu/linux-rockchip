@@ -92,7 +92,7 @@
 #include <linux/combo_mt66xx.h>
 #endif
 
-#include "../mach-rk30/board-rk3168-tb-camera.c"
+#include "../mach-rk30/board-rk3168-ds1006h-camera.c"
 
 #if defined (CONFIG_TOUCHSCREEN_86V_GT811_IIC)
 #define TOUCH_RESET_PIN  RK30_PIN0_PA7
