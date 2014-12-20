@@ -1478,6 +1478,9 @@ static struct platform_device *devices[] __initdata = {
 #if defined(CONFIG_MT6229)
 	&rk29_device_mt6229,
 #endif
+#ifdef CONFIG_RK_REMOTECTL
+    &rk30_device_remotectl,
+#endif
 #ifdef CONFIG_BATTERY_RK30_ADC
  	&rk30_device_adc_battery,
 #endif
@@ -1493,9 +1496,7 @@ static struct platform_device *devices[] __initdata = {
 #if defined(CONFIG_MT5931_MT6622) || defined(CONFIG_MTK_MT6622)
 	&device_mt6622,
 #endif
-#ifdef CONFIG_RK_REMOTECTL
-    &rk30_device_remotectl,
-#endif
+
 };
 
 static int rk_platform_add_display_devices(void)
