@@ -536,6 +536,14 @@ static int rk_hdmi_power_init(void)
 	}
 	return 0;
 }
+
+static int rk_hdmi_power_deinit(void)
+{
+	gpio_direction_output(RK_HDMI_RST_PIN, GPIO_LOW);
+	gpio_set_value(RK_HDMI_RST_PIN, GPIO_LOW);
+	return 0;
+}
+
 static struct rk_hdmi_platform_data rk_hdmi_pdata = {
 	.io_init = rk_hdmi_power_init,
 };
@@ -1172,8 +1180,8 @@ static struct platform_device rk30_device_remotectl = {
 #if defined(CONFIG_MFD_RK616)
 #define RK616_SCL_RATE			(100*1000)   //i2c scl rate
 static struct rk616_platform_data rk616_pdata = {
-	.power_init = NULL,
-	.power_deinit = NULL,
+	.power_init = rk_hdmi_power_init,
+	.power_deinit = rk_hdmi_power_deinit,
 	.scl_rate   = RK616_SCL_RATE,
 	.lcd0_func = INPUT,             //port lcd0 as input
 	.lcd1_func = UNUSED,             //port lcd1 as input
