@@ -530,9 +530,9 @@ static int rk_hdmi_power_init(void)
 		}
 		gpio_direction_output(RK_HDMI_RST_PIN, GPIO_LOW);
 		gpio_set_value(RK_HDMI_RST_PIN, GPIO_LOW);
-		msleep(100);
+		msleep(500);
 		gpio_set_value(RK_HDMI_RST_PIN, GPIO_HIGH);
-		msleep(50);
+		msleep(300);
 	}
 	return 0;
 }
