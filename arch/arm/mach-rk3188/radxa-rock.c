@@ -95,8 +95,8 @@
 #include "../mach-rk30/board-rk3168-ds1006h-camera.c"
 
 #if defined (CONFIG_TOUCHSCREEN_86V_GT811_IIC)
-#define TOUCH_RESET_PIN  RK30_PIN0_PA7
-#define TOUCH_INT_PIN    RK30_PIN0_PA6
+#define TOUCH_RESET_PIN  RK30_PIN0_PA6
+#define TOUCH_INT_PIN    RK30_PIN0_PA7
 int gt811_init_platform_hw(void)
 {
     if(gpio_request(TOUCH_RESET_PIN,NULL) != 0){
