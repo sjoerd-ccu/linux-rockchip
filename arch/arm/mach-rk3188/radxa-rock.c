@@ -2328,6 +2328,7 @@ static void rk30_pm_power_off(void)
 	while (1);
 }
 
+#define LVDS_STANDBY RK30_PIN0_PD7
 static void __init machine_rk30_board_init(void)
 {
 	//avs_init();
@@ -2337,6 +2338,12 @@ static void __init machine_rk30_board_init(void)
 	pm_power_off = rk30_pm_power_off;
 	
         gpio_direction_output(POWER_ON_PIN, GPIO_HIGH);
+
+#ifdef CONFIG_LCD_RADXA_LVDS_1024_600
+	gpio_request(LVDS_STANDBY, "lvds_standby");
+	gpio_direction_output(LVDS_STANDBY, GPIO_HIGH);
+#endif
+
 
 
 	rk30_i2c_register_board_info();
