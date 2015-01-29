@@ -88,7 +88,7 @@
 		ldo8_reg: regulator@11 {
 			reg = <11>;
 			regulator-compatible = "act_ldo8";
-			//regulator-always-on;
+			regulator-always-on;
 			regulator-boot-on;
 		};
 	};
