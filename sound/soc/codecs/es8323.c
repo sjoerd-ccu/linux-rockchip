@@ -933,8 +933,9 @@ static int es8323_probe(struct snd_soc_codec *codec)
 
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	int ret = 0;
-	unsigned long flags=0;
-    mdelay(1000);
+    int tmp = 0;
+    unsigned long flags=0;
+
     DBG("%s\n", __func__);
     ret = gpio_request(es8323_spk_con_gpio, NULL);
     if (ret != 0) {
@@ -952,12 +953,19 @@ static int es8323_probe(struct snd_soc_codec *codec)
     codec->hw_write = (hw_write_t)i2c_master_send;
 	codec->control_data = container_of(codec->dev, struct i2c_client, dev);
 
-	es8323_codec = codec;
-	ret = es8323_reset(codec);
-	if (ret < 0) {
-		dev_err(codec->dev, "Failed to issue reset\n");
-		return ret;
-	}
+    for(tmp=0; tmp<=10; tmp++)
+    {
+        mdelay(100);
+        DBG("es8323 reset num %d\n",tmp+1);
+        es8323_codec = codec;
+        ret = es8323_reset(codec);
+        if (!(ret<0))
+            break;
+        if ((ret<0) && (tmp==10)) {
+            dev_err(codec->dev, "Failed to issue reset\n");
+            return ret;
+        }
+    }
 
 	es8323_jack_init(codec);
 
