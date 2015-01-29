@@ -107,7 +107,24 @@ struct rkxx_remotectl_drvdata {
     //184      //rorate_right
     //185      //zoom out
     //186      //zoom in
-    
+
+static struct rkxx_remote_key_table remote_key_table_radxa[] = {
+                {0x2, KEY_VOLUMEUP},
+                {0xc0, KEY_VOLUMEDOWN},
+                {0x52, KEY_MENU},
+                {0xa2, KEY_REPLY},
+                {0xe0, KEY_BACK},
+                {0x62, KEY_UP},
+                {0x22, KEY_DOWN},
+                {0x82, KEY_LEFT},
+                {0x92, KEY_RIGHT},
+                {0x42, KEY_HOME},
+                {0xd2, KEY_MUTE},
+                {0xc2, KEY_POWER},
+                {0xe2, 388},//mouse switch
+ };
+
+
 static struct rkxx_remote_key_table remote_key_table_meiyu_202[] = {
     {0xB0, KEY_REPLY},//ok = DPAD CENTER
     {0xA2, KEY_BACK}, 
@@ -139,7 +156,7 @@ static struct rkxx_remote_key_table remote_key_table_meiyu_202[] = {
     {0x82,   0x175},
 };
 
-/*
+
 static struct rkxx_remote_key_table remote_key_table_df[] = {
     {0xf8, KEY_REPLY},
     {0xc0, KEY_BACK}, 
@@ -158,7 +175,7 @@ static struct rkxx_remote_key_table remote_key_table_df[] = {
     {0x50, KEY_POWER},     //power off
     {0x40, KEY_SEARCH},     //search
 };
-*/
+
 static struct rkxx_remote_key_table remote_key_table_sunchip_ff[] = {
 
    {0x60, KEY_HOME},     // home
@@ -211,22 +228,43 @@ suspend_state_t get_suspend_state(void)
 
 static struct rkxx_remotectl_button remotectl_button[] = 
 {
-    {  
+	{
        .usercode = 0xff,
-       .nbuttons =  22, 
+       .nbuttons =  13,
+       .key_table = &remote_key_table_radxa[0],
+    },
+    {
+       .usercode = 0xff,
+       .nbuttons =  22,
        .key_table = &remote_key_table_sunchip_ff[0],
     },
-    {  
-       .usercode = 0x202, 
-       .nbuttons =  22, 
+
+    {
+       .usercode = 0x206,
+       .nbuttons =  22,
        .key_table = &remote_key_table_meiyu_202[0],
+    },
+    {
+       .usercode = 0x12ee,
+       .nbuttons =  22,
+       .key_table = &remote_key_table_meiyu_202[0],
+    },
+    {
+       .usercode = 0x202,
+       .nbuttons =  22,
+       .key_table = &remote_key_table_meiyu_202[0],
+    },
+    {
+       .usercode = 0xdf,
+       .nbuttons =  16,
+       .key_table = &remote_key_table_df[0],
     },
 };
 
 
 static int remotectl_keybdNum_lookup(struct rkxx_remotectl_drvdata *ddata)
-{	
-    int i;	
+{
+    int i;
 
     for (i = 0; i < sizeof(remotectl_button)/sizeof(struct rkxx_remotectl_button); i++){		
         if (remotectl_button[i].usercode == (ddata->scanData&0xFFFF)){			
@@ -239,8 +277,8 @@ static int remotectl_keybdNum_lookup(struct rkxx_remotectl_drvdata *ddata)
 
 
 static int remotectl_keycode_lookup(struct rkxx_remotectl_drvdata *ddata)
-{	
-    int i;	
+{
+    int i;
     unsigned char keyData = ((ddata->scanData >> 8) & 0xff);
 
     for (i = 0; i < remotectl_button[ddata->keybdNum].nbuttons; i++){
@@ -254,7 +292,7 @@ static int remotectl_keycode_lookup(struct rkxx_remotectl_drvdata *ddata)
 
 
 static void remotectl_get_pwr_scanData(struct rkxx_remotectl_drvdata *ddata,int *pwr_data,int loop)
-{	
+{
     int i;
     int temp_scanCode;
     int temp_pwr_data;
