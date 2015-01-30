@@ -166,8 +166,8 @@
 &pinctrl {
 	//used for init some gpio
 
-	init-gpios = <&gpio0 GPIO_A6 GPIO_ACTIVE_HIGH>;
-	
+        init-gpios = <&gpio0 GPIO_B5 GPIO_ACTIVE_LOW>;	
+
 	gpio0_gpio {
 			gpio0_c2: gpio0-c2 {
 				rockchip,pins = <GPIO0_C2>;
