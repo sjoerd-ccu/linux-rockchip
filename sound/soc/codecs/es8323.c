@@ -28,7 +28,7 @@
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
-#include <sound/jack.h>
+
 
 #include "es8323.h"
 
@@ -38,7 +38,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 
-#if 0
+#if 1
 #define DBG(x...) printk(x)
 #else
 #define DBG(x...) do { } while (0)
@@ -46,42 +46,26 @@
 #define alsa_dbg DBG
 
 static int set_spk = 1;                     // add by xhc when insert hdmi 0, no insert hdmi 1
-#define RT5633_SPK_TIMER	0	//if enable this, MUST enable RT5633_EQ_FUNC_ENA and RT5633_EQ_FUNC_SEL==RT5633_EQ_FOR_MANUAL first!
-#if (RT5633_SPK_TIMER == 1)
-static struct timer_list spk_timer;
-struct work_struct  spk_work;
-static bool last_is_spk = false;
-#endif
-
-#undef SPK_CTL
 #ifdef CONFIG_MACH_RK_FAC
 int es8323_hdmi_ctrl=0;
 #endif
-
 #define INVALID_GPIO -1
 int es8323_spk_con_gpio = INVALID_GPIO;
 int es8323_hp_det_gpio = INVALID_GPIO;
 int es8323_hp_det_action_value = 0;
+int es8323_hp_mic_only = 0;
+char es8323_mic_state = 0;
 static int HP_IRQ=0;
 static int hp_irq_flag = 0;
-
-#undef EAR_CON_PIN
+int  mic_state_switch();
 
 #ifndef es8323_DEF_VOL
-#define es8323_DEF_VOL			0x1e
+#define es8323_DEF_VOL			0x15
 #endif
 
 static int es8323_set_bias_level(struct snd_soc_codec *codec,enum snd_soc_bias_level level);
 extern int es8323_dapm_pre_event(struct snd_soc_dapm_widget* widget, struct snd_kcontrol * null, int event);
 extern int es8323_dapm_post_event(struct snd_soc_dapm_widget* widget, struct snd_kcontrol * null, int event);
-static struct snd_soc_jack firefly_es8323_hp_jack;
-
-static struct snd_soc_jack_gpio firefly_es8323_hp_jack_gpio = {
-	.name = "headphone detect",
-	.report = SND_JACK_HEADPHONE,
-	.debounce_time = 150,
-};
-
 /*
  * es8323 register cache
  * We can't read the es8323 register space when we
@@ -112,6 +96,71 @@ struct es8323_priv {
 	int is_startup;		// gModify.Add
 	int is_biason;
 };
+
+static void hp_detect_do_switch(struct work_struct *work)
+{
+	int ret;
+	int irq = gpio_to_irq(es8323_hp_det_gpio);
+	unsigned int type;
+
+	//rk28_send_wakeup_key();
+	printk("hjc:%s,irq=%d\n",__func__,irq);
+    printk("es8323_hp_det_gpio value %d\n",gpio_get_value(es8323_hp_det_gpio));
+	type = gpio_get_value(es8323_hp_det_gpio) ? IRQ_TYPE_EDGE_FALLING : IRQ_TYPE_EDGE_RISING;
+	ret = irq_set_irq_type(irq, type);
+	if (ret < 0) {
+		pr_err("%s: irq_set_irq_type(%d, %d) failed\n", __func__, irq, type);
+	}else{
+        if(type == IRQ_TYPE_EDGE_FALLING)
+            printk("IRQ_TYPE_EDGE_FALLING\n");
+        else {
+            printk("IRQ_TYPE_EDGE_RISING\n");
+        }
+    }
+
+	if(es8323_hp_mic_only == 0) {
+		hp_irq_flag = 1;
+		if(es8323_hp_det_action_value == gpio_get_value(es8323_hp_det_gpio)){
+			printk("hp_det = 0,insert hp\n");
+			gpio_set_value(es8323_spk_con_gpio,0);
+		}else if(!(es8323_hp_det_action_value) == gpio_get_value(es8323_hp_det_gpio)){
+			printk("hp_det = 1,deinsert hp\n");
+			gpio_set_value(es8323_spk_con_gpio,1);
+		}
+	} else {
+		mic_state_switch();
+	}
+	enable_irq(irq);
+}
+
+
+static DECLARE_DELAYED_WORK(wakeup_work, hp_detect_do_switch);
+
+
+static irqreturn_t hp_det_irq_handler(int irq, void *dev_id)
+{
+#if 0
+	printk("%s=%d,%d\n",__FUNCTION__,HP_IRQ,HP_DET);
+	//disable_irq_nosync(ts->client->irq);
+	//queue_work(gt801_wq, &ts->work);
+	if(0 == gpio_get_value(HP_DET)){
+		printk("hp_det = 0,insert hp\n");
+		gpio_set_value(SPK_CON,0);
+	}else if(1 == gpio_get_value(HP_DET)){
+		printk("hp_det = 1,insert hp\n");
+		gpio_set_value(SPK_CON,1);
+	}
+	return IRQ_HANDLED;
+#endif
+	printk("hjc:%s>>>>\n",__func__);
+	disable_irq_nosync(irq); // for irq debounce
+	//wake_lock_timeout(&usb_wakelock, WAKE_LOCK_TIMEOUT);
+	schedule_delayed_work(&wakeup_work, HZ / 10);
+	return IRQ_HANDLED;
+
+}
+
+
 
 static unsigned int es8323_read_reg_cache(struct snd_soc_codec *codec,
 				     unsigned int reg)
@@ -495,17 +544,6 @@ static void on_off_ext_amp(int i)
 
     DBG("*** %s() SPEAKER set SPK_CON %d\n", __FUNCTION__, i);
     mdelay(50);
-    #ifdef SPK_CTL
-    //gpio_direction_output(SPK_CTL, GPIO_LOW);
-    gpio_set_value(SPK_CTL, i);
-    DBG("*** %s() SPEAKER set as %d\n", __FUNCTION__, i);
-    #endif
-    #ifdef EAR_CON_PIN
-    //gpio_direction_output(EAR_CON_PIN, GPIO_LOW);
-    gpio_set_value(EAR_CON_PIN, i);
-    DBG("*** %s() HEADPHONE set as %d\n", __FUNCTION__, i);
-    mdelay(50);
-    #endif
 }
 
 
@@ -600,7 +638,6 @@ static int es8323_set_dai_fmt(struct snd_soc_dai *codec_dai,
         default:
             return -EINVAL;
     }
-
     /* clock inversion */
     switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
         case SND_SOC_DAIFMT_NB_NF:
@@ -633,12 +670,10 @@ static int es8323_set_dai_fmt(struct snd_soc_dai *codec_dai,
             return -EINVAL;
     }
 
-    snd_soc_write(codec, ES8323_IFACE    , iface);
-    snd_soc_write(codec, ES8323_ADC_IFACE, adciface);
-    snd_soc_write(codec, ES8323_DAC_IFACE, daciface);
+	snd_soc_write(codec, ES8323_IFACE    , iface);
+	snd_soc_write(codec, ES8323_ADC_IFACE, adciface);
+	snd_soc_write(codec, ES8323_DAC_IFACE, daciface);
 
-//    tmp    = snd_soc_read(codec, ES8323_DACPOWER);
-    DBG("ES8323_DACPOWER %x\n",tmp);
     return 0;
 }
 
@@ -750,7 +785,6 @@ static int es8323_pcm_hw_params(struct snd_pcm_substream *substream,
 
 static int es8323_mute(struct snd_soc_dai *dai, int mute)
 {
-    u16 tmp;
 	struct snd_soc_codec *codec = dai->codec;
 	// u16 mute_reg = snd_soc_read(codec, ES8323_DACCONTROL3) & 0xfb;
 
@@ -897,6 +931,7 @@ static int entry_read(char *page, char **start, off_t off,
 	snd_soc_write(es8323_codec, ES8323_CHIPPOWER, 0xff);
 
 	len = sprintf(page, "es8323 suspend...\n");
+
 	return len ;
 }
 
@@ -914,35 +949,43 @@ void spk_timer_callback(unsigned long data )
 }
 #endif
 
-static void es8323_jack_init(struct snd_soc_codec *codec)
-{
-	DBG("Enter::%s----",__FUNCTION__);
-	if(es8323_hp_det_gpio  != INVALID_GPIO)
-	{
-		firefly_es8323_hp_jack_gpio.gpio = es8323_hp_det_gpio;
-		snd_soc_jack_new(codec, "Headphone Jack", SND_JACK_HEADPHONE,
-				&firefly_es8323_hp_jack);
-		snd_soc_jack_add_gpios(&firefly_es8323_hp_jack, 1,
-				&firefly_es8323_hp_jack_gpio);
-	}
-}
-
 static int es8323_probe(struct snd_soc_codec *codec)
 {
-	DBG("Enter::%s----",__FUNCTION__);
-
+	// struct es8323_priv *es8323 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	int ret = 0;
     int tmp = 0;
     unsigned long flags=0;
 
-    DBG("%s\n", __func__);
-    ret = gpio_request(es8323_spk_con_gpio, NULL);
-    if (ret != 0) {
-        printk("%s request SPK_CON error", __func__);
-        return ret;
-    }
-    gpio_direction_output(es8323_spk_con_gpio,0);
+	printk("%s\n", __func__);
+	ret = gpio_request(es8323_spk_con_gpio, NULL);
+	if (ret != 0) {
+		printk("%s request SPK_CON error", __func__);
+		return ret;
+	}
+	gpio_direction_output(es8323_spk_con_gpio,1);
+    gpio_set_value(es8323_spk_con_gpio, 0);
+
+	if(es8323_hp_det_gpio  != INVALID_GPIO) {
+		ret = gpio_request(es8323_hp_det_gpio, NULL);
+		if (ret != 0) {
+			printk("%s request HP_DET error", __func__);
+			return ret;
+		}
+		gpio_direction_input(es8323_hp_det_gpio);
+
+		flags = gpio_get_value(es8323_hp_det_gpio) ? IRQF_TRIGGER_FALLING : IRQF_TRIGGER_RISING;
+
+		HP_IRQ = gpio_to_irq(es8323_hp_det_gpio);
+		if (HP_IRQ){
+			ret = request_irq(HP_IRQ, hp_det_irq_handler, flags, "ES8323", NULL);
+			if(ret == 0){
+				printk("%s:register ISR (irq=%d)\n", __FUNCTION__,HP_IRQ);
+			}
+			else
+				printk("request_irq HP_IRQ failed\n");
+		}
+	}
 
 	if (codec == NULL) {
 		dev_err(codec->dev, "Codec device not registered\n");
@@ -966,8 +1009,6 @@ static int es8323_probe(struct snd_soc_codec *codec)
             return ret;
         }
     }
-
-	es8323_jack_init(codec);
 
 #if (RT5633_SPK_TIMER == 1)
 	setup_timer( &spk_timer, spk_timer_callback, 0 );
@@ -1009,7 +1050,7 @@ static int es8323_probe(struct snd_soc_codec *codec)
     snd_soc_write(codec, ES8323_DACCONTROL19,0x38);
     snd_soc_write(codec, ES8323_DACCONTROL20,0xb8);
     snd_soc_write(codec, ES8323_CHIPPOWER,0x00); //aa //START DLL and state-machine,START DSM
-    snd_soc_write(codec, ES8323_DACCONTROL3,0x02);  //SOFT RAMP RATE=32LRCKS/STEP,Enable ZERO-CROSS CHECK,DAC MUTE
+    snd_soc_write(codec, ES8323_DACCONTROL3,0x06);  //SOFT RAMP RATE=32LRCKS/STEP,Enable ZERO-CROSS CHECK,DAC MUTE
     msleep(100);
     snd_soc_write(codec, ES8323_DACCONTROL24,0x1e);
     snd_soc_write(codec, ES8323_DACCONTROL25,0x1e);
@@ -1165,6 +1206,122 @@ static struct class *es8323_class = NULL;
 static DEVICE_ATTR(es8323, 0664, es8323_show, es8323_store);
 
 
+
+int  mic_state_switch()
+{
+	printk("%s %d\n",__FUNCTION__, es8323_mic_state);
+	if(es8323_mic_state == 0) {
+        printk("es8323_hp_det_gpio value %d\n",gpio_get_value(es8323_hp_det_gpio));
+		if(es8323_hp_det_action_value == gpio_get_value(es8323_hp_det_gpio)){
+			printk("hp_det = 0,deinsert hp\n");
+			printk("hp mic use board\n");
+			snd_soc_write(es8323_codec, 0x0b,0x02);
+		}else if(!(es8323_hp_det_action_value) == gpio_get_value(es8323_hp_det_gpio)){
+            printk("es8323_hp_det_gpio value %d\n",gpio_get_value(es8323_hp_det_gpio));
+			printk("hp_det = 1,insert hp\n");
+			printk("hp mic use headphone\n");
+			snd_soc_write(es8323_codec, 0x0b,0x82);
+		}
+	} else if(es8323_mic_state == 1) {
+		printk("hp mic use board\n");
+		snd_soc_write(es8323_codec, 0x0b,0x02);
+	} else if(es8323_mic_state == 2) {
+		printk("hp mic use headphone\n");
+		snd_soc_write(es8323_codec, 0x0b,0x82);
+	}
+
+}
+
+#define MIC_STATE_INIT  0
+#define MIC_STATE_WIRTE 1
+#define MIC_STATE_READ  2
+int es8323_mic_state_ctrl(int cmd, char *ch) {
+	struct file *fp;
+	mm_segment_t fs;
+	char buf[2];
+	loff_t pos;
+	fp = filp_open("/data/es8323_mic_state", O_RDWR | O_CREAT, 0666);
+	if (IS_ERR(fp)) {
+		printk("es8323_create file error\n");
+		return -1;
+	}
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_read(fp, buf, sizeof(buf), &pos);
+	buf[1] = 0;
+	printk("es8323_mic_state_ctrl read: %s\n", buf);
+	if(cmd == MIC_STATE_INIT) {
+		if(buf[0] >= '0' && buf[0] <= '2') {
+			es8323_mic_state = buf[0] - '0';
+		} else {
+			es8323_mic_state = 0;
+			buf[0] = '0';
+			buf[1] = 0;
+			pos = 0;
+			vfs_write(fp, buf, sizeof(buf), &pos);
+		}
+		mic_state_switch();
+	} else if(cmd == MIC_STATE_WIRTE) {
+		if((*ch >= '0' && *ch <= '2') && (*ch != buf[0])) {
+			es8323_mic_state = *ch - '0';
+			buf[0] = *ch;
+			buf[1] = 0;
+			pos = 0;
+			vfs_write(fp, buf, sizeof(buf), &pos);
+			mic_state_switch();
+			printk("es8323_mic_state_ctrl es8323_mic_state=%d write: %s \n", es8323_mic_state ,ch);
+		}
+	} else if(cmd == MIC_STATE_READ) {
+		*ch = buf[0];
+	}
+	filp_close(fp, NULL);
+	set_fs(fs);
+	return 0;
+}
+
+
+static ssize_t mic_state_show(struct device *dev, struct device_attribute *attr, char *_buf)
+{
+	return sprintf(_buf, "%d\n", es8323_mic_state);
+}
+
+static ssize_t mic_state_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *_buf, size_t _count)
+{
+	const char * p=_buf;
+	u32 reg, val;
+	printk("write: %s\n", &_buf[0]);
+	if(_buf[0] >= '0' && _buf[0] <= '2') {
+		es8323_mic_state_ctrl(MIC_STATE_WIRTE, &_buf[0]);
+	}
+
+	return _count;
+}
+
+static struct device *es8323_mic_state_dev = NULL;
+static DEVICE_ATTR(mic_state, 0666,mic_state_show, mic_state_store);
+
+
+struct delayed_work  mic_state_work;
+struct workqueue_struct *mic_state_wq;
+static void mic_state_fuc(struct work_struct *pwork) //(unsigned long _data)
+{
+	es8323_mic_state_ctrl(MIC_STATE_INIT, NULL);
+}
+
+
+/*
+dts:
+codec@10 {
+compatible = "es8323";
+reg = <0x10>;
+spk-con-gpio = <&gpio2 GPIO_D7 GPIO_ACTIVE_HIGH>;
+hp-det-gpio = <&gpio0 GPIO_B5 GPIO_ACTIVE_HIGH>;
+};
+*/
+
 static int es8323_i2c_probe(struct i2c_client *i2c,
 				      const struct i2c_device_id *id)
 {
@@ -1189,14 +1346,23 @@ static int es8323_i2c_probe(struct i2c_client *i2c,
 
 	es8323_spk_con_gpio = of_get_named_gpio(i2c->dev.of_node, "spk-con-gpio", 0);
 	if (es8323_spk_con_gpio < 0) {
-		DBG("%s() Can not read property codec-en-gpio\n", __FUNCTION__);
+		DBG("%s() Can not read property spk con gpio\n", __FUNCTION__);
 		es8323_spk_con_gpio = INVALID_GPIO;
-	}
+	}else{
+		DBG("%s can read spk con gpio %x\n", __FUNCTION__,es8323_spk_con_gpio);
+    }
 
 	es8323_hp_det_gpio = of_get_named_gpio(i2c->dev.of_node, "hp-det-gpio", 0);
 	if (es8323_hp_det_gpio < 0) {
-		DBG("%s() Can not read property codec-en-gpio\n", __FUNCTION__);
+		DBG("%s() Can not read property hp det gpio\n", __FUNCTION__);
 		es8323_hp_det_gpio = INVALID_GPIO;
+	}else{
+		DBG("%s can read hp det gpio %x\n", __FUNCTION__,es8323_hp_det_gpio);
+    }
+
+	of_property_read_u32(i2c->dev.of_node, "hp-mic-only", &es8323_hp_mic_only);
+	if(es8323_hp_mic_only != 1) {
+		es8323_hp_mic_only = 0;
 	}
 
 	reg = ES8323_DACCONTROL18;
@@ -1227,9 +1393,21 @@ static int es8323_i2c_probe(struct i2c_client *i2c,
         if (ret < 0)
                 printk("failed to add dev_attr_es8323 file\n");
 
-  #ifdef CONFIG_MACH_RK_FAC
-  	es8323_hdmi_ctrl=1;
-  #endif
+	if(es8323_hp_mic_only == 1) {
+		es8323_mic_state_dev = device_create(es8323_class, NULL, MKDEV(0, 1), NULL, "mic_state");
+		ret = device_create_file(es8323_mic_state_dev, &dev_attr_mic_state);
+		if (ret < 0)
+			printk("failed to add dev_attr_mic_state file\n");
+		INIT_DELAYED_WORK(&mic_state_work, mic_state_fuc);
+		mic_state_wq = create_workqueue("firefly_mic_state_wq");
+		if (mic_state_wq){
+			queue_delayed_work(mic_state_wq, &mic_state_work,msecs_to_jiffies(8000));
+		}
+	}
+
+#ifdef CONFIG_MACH_RK_FAC
+	es8323_hdmi_ctrl=1;
+#endif
 
 	return ret;
 }
