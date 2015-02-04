@@ -788,24 +788,42 @@ static int es8323_mute(struct snd_soc_dai *dai, int mute)
 	struct snd_soc_codec *codec = dai->codec;
 	// u16 mute_reg = snd_soc_read(codec, ES8323_DACCONTROL3) & 0xfb;
 
+//        snd_soc_write(codec, ES8323_DACPOWER,0xc0);   //pdn_ana=0,ibiasgen_pdn=0
+//  	    snd_soc_write(codec, ES8323_ANAVOLMANAG, 0x7C);
+//  	    snd_soc_write(codec, ES8323_CHIPLOPOW1, 0x00);
+//  	    snd_soc_write(codec, ES8323_CHIPLOPOW2, 0x00);
+//		snd_soc_write(codec, ES8323_CHIPPOWER, 0x55);
+//		snd_soc_write(codec, ES8323_ADCPOWER, 0x00);
 	DBG("Enter::%s----%d--mute=%d\n",__FUNCTION__,__LINE__,mute);
-
+    printk("adc mute\n");
+//   	snd_soc_write(codec, ES8323_DACCONTROL3, 0x04);     //DAC UNMUTE
+//    on_off_ext_amp(!mute);
+//    printk("open ext amp\n");
 	if (mute)
 	 {
         DBG("es8323 mute\n");
+        snd_soc_write(codec, ES8323_DACPOWER,0xc0);   //pdn_ana=0,ibiasgen_pdn=0
         snd_soc_write(codec, ES8323_DACCONTROL3, 0x06);     //DAC MUTE
 	 }
 	else
 	{
         DBG("es8323 unmute\n");
-   	    snd_soc_write(codec, ES8323_DACCONTROL3, 0x02);     //DAC UNMUTE
-		snd_soc_write(codec, ES8323_DACCONTROL26,0x1e);
-		snd_soc_write(codec, ES8323_DACCONTROL27,0x1e);
+        snd_soc_write(codec, ES8323_DACPOWER,0xc0);   //pdn_ana=0,ibiasgen_pdn=0
+  	    snd_soc_write(codec, ES8323_ANAVOLMANAG, 0x7C);
+//   	    snd_soc_write(codec, ES8323_DACCONTROL3, 0x02);     //DAC UNMUTE
+		snd_soc_write(codec, ES8323_DACCONTROL26,0x00);
+		snd_soc_write(codec, ES8323_DACCONTROL27,0x00);
         snd_soc_write(codec, ES8323_DACPOWER,0x3c);         //ENABLE DAC  ENABLE L R OUTPUT
 		snd_soc_write(codec, ES8323_CHIPPOWER, 0xaa);       //DAC POWER ON
+        printk("chip power on\n");
+ //  	    snd_soc_write(codec, ES8323_DACCONTROL3, 0x02);     //DAC UNMUTE
+   	    snd_soc_write(codec, ES8323_DACCONTROL3, 0x02);     //DAC UNMUTE
+        printk("dac unmute\n");
 	}
     on_off_ext_amp(!mute);
 
+		snd_soc_write(codec, ES8323_DACCONTROL26,0x1e);
+		snd_soc_write(codec, ES8323_DACCONTROL27,0x1e);
 	return 0;
 }
 
@@ -829,7 +847,7 @@ static int es8323_set_bias_level(struct snd_soc_codec *codec,
         DBG("SND_SOC_BIAS_PREPARE\n");
 		break;
 	case SND_SOC_BIAS_STANDBY:
-        snd_soc_write(codec, 0x04,0xc0);   //pdn_ana=0,ibiasgen_pdn=0
+        snd_soc_write(codec, ES8323_DACPOWER,0xc0);   //pdn_ana=0,ibiasgen_pdn=0
   	    snd_soc_write(codec, ES8323_ANAVOLMANAG, 0x7C);
   	    snd_soc_write(codec, ES8323_CHIPLOPOW1, 0x00);
   	    snd_soc_write(codec, ES8323_CHIPLOPOW2, 0x00);
@@ -1052,8 +1070,8 @@ static int es8323_probe(struct snd_soc_codec *codec)
     snd_soc_write(codec, ES8323_CHIPPOWER,0x00); //aa //START DLL and state-machine,START DSM
     snd_soc_write(codec, ES8323_DACCONTROL3,0x06);  //SOFT RAMP RATE=32LRCKS/STEP,Enable ZERO-CROSS CHECK,DAC MUTE
     msleep(100);
-    snd_soc_write(codec, ES8323_DACCONTROL24,0x1e);
-    snd_soc_write(codec, ES8323_DACCONTROL25,0x1e);
+    snd_soc_write(codec, ES8323_DACCONTROL24,0x00);
+    snd_soc_write(codec, ES8323_DACCONTROL25,0x00);
     snd_soc_write(codec, ES8323_DACCONTROL26,0x08);
     snd_soc_write(codec, ES8323_DACCONTROL27,0x08);
 #endif
