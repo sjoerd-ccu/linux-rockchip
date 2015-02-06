@@ -494,11 +494,16 @@
 };
 
 &adc {
-	status = "disabled";
+	status = "okay";
+       /*
+               hook_gpio = ;
+               hook_down_type = ; //interrupt hook key down status 
+		*/       
+/*       };*/
 
 	key {
 		compatible = "rockchip,key";
-		/*
+		
 		io-channels = <&adc 1>;
 		
 		vol-up-key {
@@ -512,14 +517,14 @@
 			label = "volume down";
 			rockchip,adc_value = <170>;
 		};
-		*/
+	
 		power-key {
 			gpios = <&gpio0 GPIO_A5 GPIO_ACTIVE_LOW>;
 			linux,code = <116>;
 			label = "power";
 			gpio-key,wakeup;
 		};
-		/*
+
 		menu-key {
 			linux,code = <59>;
 			label = "menu";
@@ -542,7 +547,7 @@
 			linux,code = <212>;
 			label = "camera";
 			rockchip,adc_value = <450>;
-		};*/
+		};
 	};
 };
 
