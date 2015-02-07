@@ -61,7 +61,24 @@
         status = "okay";
     };
 
-	pwm_regulator {
+    gpio-leds {
+        compatible = "gpio-leds";
+        pinctrl-names = "default";
+
+        blue {
+            label = "green";
+            gpios = <&gpio7 GPIO_B7 GPIO_ACTIVE_LOW>;
+            linux,default-trigger = "heartbeat";
+        };
+
+        green {
+            label = "blue";
+            gpios = <&gpio0 GPIO_B3 GPIO_ACTIVE_LOW>;
+            linux,default-trigger = "mmc0";
+        };
+    };
+
+    pwm_regulator {
 		compatible = "rockchip_pwm_regulator";
 		pwms = <&pwm1 0 2000>;
 		rockchip,pwm_id= <1>;
@@ -166,7 +183,7 @@
 &pinctrl {
 	//used for init some gpio
 
-        init-gpios = <&gpio0 GPIO_B5 GPIO_ACTIVE_LOW>;	
+
 
 	gpio0_gpio {
 			gpio0_c2: gpio0-c2 {
