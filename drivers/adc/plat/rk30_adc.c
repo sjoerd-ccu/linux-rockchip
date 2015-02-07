@@ -115,6 +115,57 @@ static int rk30_adc_test(void)
 }
 #endif
 
+struct adc_client * adc_client[3] = {NULL,NULL,NULL};
+int adc_value[3] = {0,0,0};
+
+static void adc_callback(struct adc_client *client, void *param, int result)
+{
+	adc_value[client->chn] = result;
+	return;
+}
+
+static ssize_t adc_show(int chn,char *buf,int syncflag)
+{
+	if(NULL==adc_client[chn]) adc_client[chn]=adc_register(chn,adc_callback,NULL);
+
+	if(syncflag) adc_value[chn] = adc_sync_read(adc_client[chn]);
+	else adc_async_read(adc_client[chn]);
+
+	return sprintf(buf,"%d",adc_value[chn]);
+}
+
+static ssize_t adc0_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return adc_show(0,buf,0 /*async*/);
+}
+static ssize_t adc1_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return adc_show(1,buf,0 /*async*/);
+}
+static ssize_t adc2_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return adc_show(2,buf,0 /*async*/);
+}
+static ssize_t adc_sync_0_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return adc_show(0,buf,1 /*sync*/);
+}
+static ssize_t adc_sync_1_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return adc_show(1,buf,1 /*sync*/);
+}
+static ssize_t adc_sync_2_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return adc_show(2,buf,1 /*sync*/);
+}
+
+static DEVICE_ATTR(adc0, S_IRUGO | S_IWUSR, adc0_show, NULL);
+static DEVICE_ATTR(adc1, S_IRUGO | S_IWUSR, adc1_show, NULL);
+static DEVICE_ATTR(adc2, S_IRUGO | S_IWUSR, adc2_show, NULL);
+static DEVICE_ATTR(adc_sync_0, S_IRUGO | S_IWUSR, adc_sync_0_show, NULL);
+static DEVICE_ATTR(adc_sync_1, S_IRUGO | S_IWUSR, adc_sync_1_show, NULL);
+static DEVICE_ATTR(adc_sync_2, S_IRUGO | S_IWUSR, adc_sync_2_show, NULL);
+
 static int rk30_adc_probe(struct platform_device *pdev)
 {
         struct adc_platform_data *pdata = pdev->dev.platform_data;
@@ -122,6 +173,7 @@ static int rk30_adc_probe(struct platform_device *pdev)
 	struct rk30_adc_device *dev;
 	struct resource *res;
 	int ret = 0, i, v;
+	int err0,err1,err2,err3,err4,err5;
 
         if(!pdata)
                 return -EINVAL;
@@ -213,6 +265,16 @@ static int rk30_adc_probe(struct platform_device *pdev)
                         mdelay(1);
                 }
         }
+        
+        err0 = device_create_file(&pdev->dev, &dev_attr_adc0);
+	err1 = device_create_file(&pdev->dev, &dev_attr_adc1);
+	err2 = device_create_file(&pdev->dev, &dev_attr_adc2);
+	err3 = device_create_file(&pdev->dev, &dev_attr_adc_sync_0);
+	err4 = device_create_file(&pdev->dev, &dev_attr_adc_sync_1);
+	err5 = device_create_file(&pdev->dev, &dev_attr_adc_sync_2);
+	if(err0 || err1 || err2 || err3 || err4 || err5)
+		dev_err(&pdev->dev, "create adc file failed: %d %d %d %d %d %d\n", err0, err1, err2, err3, err4, err5);
+        
 	dev_info(&pdev->dev, "rk30 adc: driver initialized\n");
 	return 0;
 err_adc_sync_read:
