@@ -57,6 +57,7 @@ int (*video_data_to_mirroring) (struct fb_info *info, u32 yuv_phy[2]);
 EXPORT_SYMBOL(video_data_to_mirroring);
 #endif
 
+#define CONFIG_LOGO_LINUX_BMP
 struct rk_fb_reg_win_data g_reg_win_data[4];
 static int g_last_win_num;
 static int g_first_buf = 1;
@@ -2713,7 +2714,7 @@ static int init_lcdc_device_driver(struct rk_fb *rk_fb,
 	return 0;
 }
 
-#ifdef CONFIG_LOGO_LINUX_BMP
+#if 0
 static struct linux_logo *bmp_logo;
 static int fb_prewine_bmp_logo(struct fb_info *info, int rotate)
 {
@@ -2890,7 +2891,7 @@ int rk_fb_register(struct rk_lcdc_driver *dev_drv,
 			return 0;
 		}
 		main_fbi->fbops->fb_set_par(main_fbi);
-#if  defined(CONFIG_LOGO_LINUX_BMP)
+#if 0
 		if (fb_prewine_bmp_logo(main_fbi, FB_ROTATE_UR)) {
 			fb_set_cmap(&main_fbi->cmap, main_fbi);
 			fb_show_bmp_logo(main_fbi, FB_ROTATE_UR);

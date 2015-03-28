@@ -64,6 +64,8 @@ int (*video_data_to_mirroring) (struct fb_info *info, u32 yuv_phy[2]);
 EXPORT_SYMBOL(video_data_to_mirroring);
 #endif
 
+#define CONFIG_LOGO_LINUX_BMP
+
 struct rk_fb_reg_win_data g_reg_win_data[4];
 static int g_last_win_num;
 static int g_first_buf = 1;
