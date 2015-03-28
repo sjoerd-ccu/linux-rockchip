@@ -38,7 +38,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 
-#if 1
+#if 0
 #define DBG(x...) printk(x)
 #else
 #define DBG(x...) do { } while (0)
@@ -58,6 +58,8 @@ char es8323_mic_state = 0;
 static int HP_IRQ=0;
 static int hp_irq_flag = 0;
 int  mic_state_switch();
+
+static int playback_flag = 0;
 
 #ifndef es8323_DEF_VOL
 #define es8323_DEF_VOL			0x15
@@ -104,28 +106,28 @@ static void hp_detect_do_switch(struct work_struct *work)
 	unsigned int type;
 
 	//rk28_send_wakeup_key();
-	printk("hjc:%s,irq=%d\n",__func__,irq);
-    printk("es8323_hp_det_gpio value %d\n",gpio_get_value(es8323_hp_det_gpio));
+	DBG("hjc:%s,irq=%d\n",__func__,irq);
+    DBG("es8323_hp_det_gpio value %d\n",gpio_get_value(es8323_hp_det_gpio));
 	type = gpio_get_value(es8323_hp_det_gpio) ? IRQ_TYPE_EDGE_FALLING : IRQ_TYPE_EDGE_RISING;
 	ret = irq_set_irq_type(irq, type);
 	if (ret < 0) {
 		pr_err("%s: irq_set_irq_type(%d, %d) failed\n", __func__, irq, type);
 	}else{
         if(type == IRQ_TYPE_EDGE_FALLING)
-            printk("IRQ_TYPE_EDGE_FALLING\n");
+            DBG("IRQ_TYPE_EDGE_FALLING\n");
         else {
-            printk("IRQ_TYPE_EDGE_RISING\n");
+            DBG("IRQ_TYPE_EDGE_RISING\n");
         }
     }
 
 	if(es8323_hp_mic_only == 0) {
 		hp_irq_flag = 1;
 		if(es8323_hp_det_action_value == gpio_get_value(es8323_hp_det_gpio)){
-			printk("hp_det = 0,insert hp\n");
-			gpio_set_value(es8323_spk_con_gpio,0);
+			DBG("hp_det = 0,insert hp\n");
+//			gpio_set_value(es8323_spk_con_gpio,0);
 		}else if(!(es8323_hp_det_action_value) == gpio_get_value(es8323_hp_det_gpio)){
-			printk("hp_det = 1,deinsert hp\n");
-			gpio_set_value(es8323_spk_con_gpio,1);
+			DBG("hp_det = 1,deinsert hp\n");
+//			gpio_set_value(es8323_spk_con_gpio,1);
 		}
 	} else {
 		mic_state_switch();
@@ -152,7 +154,7 @@ static irqreturn_t hp_det_irq_handler(int irq, void *dev_id)
 	}
 	return IRQ_HANDLED;
 #endif
-	printk("hjc:%s>>>>\n",__func__);
+	DBG("hjc:%s>>>>\n",__func__);
 	disable_irq_nosync(irq); // for irq debounce
 	//wake_lock_timeout(&usb_wakelock, WAKE_LOCK_TIMEOUT);
 	schedule_delayed_work(&wakeup_work, HZ / 10);
@@ -247,7 +249,7 @@ static const struct snd_kcontrol_new es8323_snd_controls[] = {
     SOC_SINGLE("ALC Capture NG Threshold", ES8323_ADCCONTROL14, 3, 31, 0),
     SOC_ENUM("ALC Capture NG Type",es8323_enum[6]),
     SOC_SINGLE("ALC Capture NG Switch", ES8323_ADCCONTROL14, 0, 1, 0),
-    SOC_SINGLE("ZC Timeout Switch", ES8323_ADCCONTROL13, 6, 1, 0),
+    SOC_SINGLE("ZC Timeout Switch", ES8323_ADCCONTROL13, 5, 1, 0),
     SOC_DOUBLE_R_TLV("Capture Digital Volume", ES8323_ADCCONTROL8, ES8323_ADCCONTROL9,0, 255, 1, adc_tlv),
     SOC_SINGLE("Capture Mute", ES8323_ADCCONTROL7, 2, 1, 0),
     SOC_SINGLE_TLV("Left Channel Capture Volume",	ES8323_ADCCONTROL1, 4, 15, 0, bypass_tlv),
@@ -327,8 +329,8 @@ static const struct snd_soc_dapm_widget es8323_dapm_widgets[] = {
 	SND_SOC_DAPM_ADC("Left ADC", "Left Capture", ES8323_ADCPOWER, 5, 1),
 
 	/* gModify.Cmmt Implement when suspend/startup */
-	SND_SOC_DAPM_DAC("Right DAC", "Right Playback", ES8323_DACPOWER, 6, 0),
-	SND_SOC_DAPM_DAC("Left DAC", "Left Playback", ES8323_DACPOWER, 7, 0),
+	SND_SOC_DAPM_DAC("Right DAC", "Right Playback", ES8323_DACPOWER, 6, 1),
+	SND_SOC_DAPM_DAC("Left DAC", "Left Playback", ES8323_DACPOWER, 7, 1),
 
 	SND_SOC_DAPM_MIXER("Left Mixer", SND_SOC_NOPM, 0, 0,
 		&es8323_left_mixer_controls[0],
@@ -539,11 +541,9 @@ static void on_off_ext_amp(int i)
     if (set_spk == 0) {
             return;
     }
-   if(hp_irq_flag == 0)
-  	 gpio_set_value(es8323_spk_con_gpio, i);  //delete by hjc
+    if(hp_irq_flag == 0)
+        gpio_set_value(es8323_spk_con_gpio, i);  //delete by hjc
 
-    DBG("*** %s() SPEAKER set SPK_CON %d\n", __FUNCTION__, i);
-    mdelay(50);
 }
 
 
@@ -558,8 +558,6 @@ static int es8323_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	struct es8323_priv *es8323 = snd_soc_codec_get_drvdata(codec);
     u16 tmp;
     DBG("Enter::%s----%d\n",__FUNCTION__,__LINE__);
-    tmp    = snd_soc_read(codec, ES8323_DACPOWER);
-    printk("ES8323_DACPOWER %x\n",tmp);
 
 	switch (freq) {
 	case 11289600:
@@ -585,8 +583,6 @@ static int es8323_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 		return 0;
 	}
 
-    tmp    = snd_soc_read(codec, ES8323_DACPOWER);
-    printk("ES8323_DACPOWER %x\n",tmp);
 	return -EINVAL;
 }
 
@@ -600,8 +596,6 @@ static int es8323_set_dai_fmt(struct snd_soc_dai *codec_dai,
     u16 tmp;
     alsa_dbg("%s----%d, fmt[%02x]\n",__FUNCTION__,__LINE__,fmt);
 
-    tmp    = snd_soc_read(codec, ES8323_DACPOWER);
-    DBG("ES8323_DACPOWER %x\n",tmp);
     iface    = snd_soc_read(codec, ES8323_IFACE);
     adciface = snd_soc_read(codec, ES8323_ADC_IFACE);
     daciface = snd_soc_read(codec, ES8323_DAC_IFACE);
@@ -682,21 +676,19 @@ static int es8323_pcm_startup(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct es8323_priv *es8323 = snd_soc_codec_get_drvdata(codec);
-        // u16 i;
     u16 tmp;
-//    tmp = snd_soc_read(codec, ES8323_DACPOWER);
-    DBG("ES8323_DACPOWER %x\n",tmp);
 
+    gpio_set_value(es8323_spk_con_gpio, 0);
 	if (!es8323->is_startup) {
 		es8323->is_startup = 1;
 		snd_soc_write(codec, ES8323_ADCPOWER, 0x00);    //ADC ON
 	 	snd_soc_write(codec, ES8323_DACPOWER, 0x3c);    //DAC ON
-		snd_soc_write(codec, ES8323_CHIPPOWER, 0x55);   //CHIP RECORD MODE
-	}
-
-//    tmp    = snd_soc_read(codec, ES8323_DACPOWER);
-    DBG("ES8323_DACPOWER %x\n",tmp);
-	DBG("Enter::%s----%d  es8323->sysclk=%d\n",__FUNCTION__,__LINE__,es8323->sysclk);
+		snd_soc_write(codec, ES8323_CHIPPOWER, 0x04);   //CHIP RECORD MODE
+		DBG("es8323 is start up!!!!\n");
+	}else
+    {
+        DBG("es8323 is started!!!!\n");
+    }
 
 	/* The set of sample rates that can be supported depends on the
 	 * MCLK supplied to the CODEC - enforce this.
@@ -730,8 +722,6 @@ static int es8323_pcm_hw_params(struct snd_pcm_substream *substream,
     u16 tmp;
 	int coeff;
 
-    //tmp = snd_soc_read(codec, ES8323_DACPOWER);
-    DBG("ES8323_DACPOWER %x\n",tmp);
 	DBG("Enter::%s----",__FUNCTION__);
 	coeff = get_coeff(es8323->sysclk, params_rate(params));
 	if (coeff < 0) {
@@ -786,44 +776,19 @@ static int es8323_pcm_hw_params(struct snd_pcm_substream *substream,
 static int es8323_mute(struct snd_soc_dai *dai, int mute)
 {
 	struct snd_soc_codec *codec = dai->codec;
-	// u16 mute_reg = snd_soc_read(codec, ES8323_DACCONTROL3) & 0xfb;
-
-//        snd_soc_write(codec, ES8323_DACPOWER,0xc0);   //pdn_ana=0,ibiasgen_pdn=0
-//  	    snd_soc_write(codec, ES8323_ANAVOLMANAG, 0x7C);
-//  	    snd_soc_write(codec, ES8323_CHIPLOPOW1, 0x00);
-//  	    snd_soc_write(codec, ES8323_CHIPLOPOW2, 0x00);
-//		snd_soc_write(codec, ES8323_CHIPPOWER, 0x55);
-//		snd_soc_write(codec, ES8323_ADCPOWER, 0x00);
-	DBG("Enter::%s----%d--mute=%d\n",__FUNCTION__,__LINE__,mute);
-    printk("adc mute\n");
-//   	snd_soc_write(codec, ES8323_DACCONTROL3, 0x04);     //DAC UNMUTE
-//    on_off_ext_amp(!mute);
-//    printk("open ext amp\n");
 	if (mute)
 	 {
+        playback_flag = 0;
         DBG("es8323 mute\n");
-        snd_soc_write(codec, ES8323_DACPOWER,0xc0);   //pdn_ana=0,ibiasgen_pdn=0
-        snd_soc_write(codec, ES8323_DACCONTROL3, 0x06);     //DAC MUTE
 	 }
 	else
 	{
         DBG("es8323 unmute\n");
-        snd_soc_write(codec, ES8323_DACPOWER,0xc0);   //pdn_ana=0,ibiasgen_pdn=0
-  	    snd_soc_write(codec, ES8323_ANAVOLMANAG, 0x7C);
-//   	    snd_soc_write(codec, ES8323_DACCONTROL3, 0x02);     //DAC UNMUTE
-		snd_soc_write(codec, ES8323_DACCONTROL26,0x00);
-		snd_soc_write(codec, ES8323_DACCONTROL27,0x00);
-        snd_soc_write(codec, ES8323_DACPOWER,0x3c);         //ENABLE DAC  ENABLE L R OUTPUT
-		snd_soc_write(codec, ES8323_CHIPPOWER, 0xaa);       //DAC POWER ON
-        printk("chip power on\n");
- //  	    snd_soc_write(codec, ES8323_DACCONTROL3, 0x02);     //DAC UNMUTE
-   	    snd_soc_write(codec, ES8323_DACCONTROL3, 0x02);     //DAC UNMUTE
-        printk("dac unmute\n");
+		snd_soc_write(codec, ES8323_CHIPPOWER, 0x08);       //DAC POWER ON playback
+        playback_flag = 1;
 	}
     on_off_ext_amp(!mute);
 
-		snd_soc_write(codec, ES8323_DACCONTROL26,0x1e);
-		snd_soc_write(codec, ES8323_DACCONTROL27,0x1e);
 	return 0;
 }
 
@@ -842,16 +807,21 @@ static int es8323_set_bias_level(struct snd_soc_codec *codec,
   	    snd_soc_write(codec, ES8323_ANAVOLMANAG, 0x7C);
   	    snd_soc_write(codec, ES8323_CHIPLOPOW1, 0x00);
   	    snd_soc_write(codec, ES8323_CHIPLOPOW2, 0x00);
-		snd_soc_write(codec, ES8323_CHIPPOWER, 0x55);
+		snd_soc_write(codec, ES8323_CHIPPOWER, 0x04);
 		snd_soc_write(codec, ES8323_ADCPOWER, 0x00);
         DBG("SND_SOC_BIAS_PREPARE\n");
 		break;
 	case SND_SOC_BIAS_STANDBY:
-        snd_soc_write(codec, ES8323_DACPOWER,0xc0);   //pdn_ana=0,ibiasgen_pdn=0
-  	    snd_soc_write(codec, ES8323_ANAVOLMANAG, 0x7C);
   	    snd_soc_write(codec, ES8323_CHIPLOPOW1, 0x00);
   	    snd_soc_write(codec, ES8323_CHIPLOPOW2, 0x00);
-		snd_soc_write(codec, ES8323_CHIPPOWER, 0x55);
+        if(playback_flag){
+    		snd_soc_write(codec, ES8323_CHIPPOWER, 0x08);
+            gpio_set_value(es8323_spk_con_gpio, 1);
+        }
+        else {
+    		snd_soc_write(codec, ES8323_CHIPPOWER, 0x04);
+            gpio_set_value(es8323_spk_con_gpio, 0);
+        }
 		snd_soc_write(codec, ES8323_ADCPOWER, 0x00);
         DBG("SND_SOC_BIAS_STANDBY\n");
 		break;
@@ -911,13 +881,11 @@ static int es8323_suspend(struct snd_soc_codec *codec)
     snd_soc_write(codec, ES8323_DACCONTROL26, 0x00);
     snd_soc_write(codec, ES8323_DACCONTROL27, 0x00);
 	snd_soc_write(codec, ES8323_ADCPOWER, 0xFF);
-	snd_soc_write(codec, ES8323_DACPOWER, 0xc0);
-	snd_soc_write(codec, ES8323_CHIPPOWER, 0xFF);
+	snd_soc_write(codec, ES8323_CHIPPOWER, 0xF3);
 	snd_soc_write(codec, ES8323_CONTROL1, 0x00);
 	snd_soc_write(codec, ES8323_CONTROL2, 0x58);
 	snd_soc_write(codec, ES8323_DACCONTROL21, 0x9c);
 	msleep(50);
-	gpio_set_value(es8323_spk_con_gpio, 0);
 	return 0;
 }
 
@@ -927,12 +895,10 @@ static int es8323_resume(struct snd_soc_codec *codec)
 	snd_soc_write(codec, ES8323_DACCONTROL21, 0x80);
     snd_soc_write(codec, ES8323_CONTROL2, 0x50);
     snd_soc_write(codec, ES8323_CONTROL1, 0x32);
-	snd_soc_write(codec, ES8323_DACPOWER, 0x3c);
 	snd_soc_write(codec, ES8323_ADCPOWER, 0x00);
     snd_soc_write(codec, ES8323_DACCONTROL26, es8323_DEF_VOL);
     snd_soc_write(codec, ES8323_DACCONTROL27, es8323_DEF_VOL);
 	snd_soc_write(codec, ES8323_DACCONTROL3, 0x02);
-	gpio_set_value(es8323_spk_con_gpio, 1);
 	return 0;
 }
 
@@ -946,7 +912,7 @@ static int entry_read(char *page, char **start, off_t off,
 	DBG("Enter::%s----",__FUNCTION__);
 	snd_soc_write(es8323_codec, ES8323_ADCPOWER, 0xff);
 	snd_soc_write(es8323_codec, ES8323_DACPOWER, 0xc0);
-	snd_soc_write(es8323_codec, ES8323_CHIPPOWER, 0xff);
+	snd_soc_write(es8323_codec, ES8323_CHIPPOWER, 0xf3);
 
 	len = sprintf(page, "es8323 suspend...\n");
 
@@ -975,7 +941,7 @@ static int es8323_probe(struct snd_soc_codec *codec)
     int tmp = 0;
     unsigned long flags=0;
 
-	printk("%s\n", __func__);
+	DBG("%s\n", __func__);
 	ret = gpio_request(es8323_spk_con_gpio, NULL);
 	if (ret != 0) {
 		printk("%s request SPK_CON error", __func__);
@@ -1039,41 +1005,46 @@ static int es8323_probe(struct snd_soc_codec *codec)
 
 #if 1
     snd_soc_write(codec, ES8323_MASTERMODE, 0x00);   //ES8388 salve
-    snd_soc_write(codec, ES8323_CHIPPOWER, 0xff);
+    snd_soc_write(codec, ES8323_CHIPPOWER, 0xf3);
     snd_soc_write(codec, ES8323_DACCONTROL21, 0x80);
     snd_soc_write(codec, ES8323_CONTROL1,0x05);   //
     snd_soc_write(codec, ES8323_CONTROL2,0x40);   //PLAYBACK & RECORD Mode,EnRefr=1
     snd_soc_write(codec, ES8323_ADCPOWER,0x00);   //pdn_ana=0,ibiasgen_pdn=0
-    snd_soc_write(codec, ES8323_DACPOWER,0xc0);   //pdn_ana=0,ibiasgen_pdn=0
+    snd_soc_write(codec, ES8323_DACPOWER,0x3c);   //pdn_ana=0,ibiasgen_pdn=0
+
+    snd_soc_write(codec, ES8323_ANAVOLMANAG, 0x7C);
+
     snd_soc_write(codec, ES8323_ADCCONTROL1,0x88);  //ADC L/R PGA =  +24dB
     snd_soc_write(codec, ES8323_ADCCONTROL2,0xf0);  //ADC INPUT=LIN2/RIN2
     snd_soc_write(codec, ES8323_ADCCONTROL3, 0x02);  //ADC INPUT=LIN1/RIN1 //02
-    snd_soc_write(codec, ES8323_ADCCONTROL4, 0x4c);  //I2S-24BIT
+    snd_soc_write(codec, ES8323_ADCCONTROL4, 0x4c);  //I2S-16BIT
     snd_soc_write(codec, ES8323_ADCCONTROL5, 0x02);  //MCLK/LRCK=256
     snd_soc_write(codec, ES8323_ADCCONTROL8, 0x00);  //ADC Left Volume=0db
     snd_soc_write(codec, ES8323_ADCCONTROL9, 0x00);  //ADC Right Volume=0db
-    snd_soc_write(codec, ES8323_ADCCONTROL7, 0x30);  //ADC umute
+//    snd_soc_write(codec, ES8323_ADCCONTROL7, 0x30);  //ADC umute
     snd_soc_write(codec, ES8323_ADCCONTROL10, 0xea); // ALC stereo MAXGAIN: 35.5dB,  MINGAIN: +6dB (Record Volume increased!)
-    snd_soc_write(codec, ES8323_ADCCONTROL11,0xc0);
-    snd_soc_write(codec, ES8323_ADCCONTROL12,0x05);
-    snd_soc_write(codec, ES8323_ADCCONTROL13,0x06);
-    snd_soc_write(codec, ES8323_ADCCONTROL14,0x53);
+    snd_soc_write(codec, ES8323_ADCCONTROL11,0xc0);  //ALCLVL 7:4  ALCHLD 3:0
+    snd_soc_write(codec, ES8323_ADCCONTROL12,0x12);  //LCDCY 7:4   ALCATK 3:0
+    snd_soc_write(codec, ES8323_ADCCONTROL13,0x06);  //ALCMODE 7  ALCZC 6  TIME_OUT 5  WIN_SIZE 4:0
+    snd_soc_write(codec, ES8323_ADCCONTROL14,0xc3);  //NGTH 7:3  NGG 2:1  NGAT 0
+
     snd_soc_write(codec, ES8323_DACCONTROL1,0x18);  //I2S-16BIT
     snd_soc_write(codec, ES8323_DACCONTROL2,0x02);
     snd_soc_write(codec, ES8323_DACCONTROL4,0x00);  //DAC VOLUME=0DB
     snd_soc_write(codec, ES8323_DACCONTROL5,0x00);
+    snd_soc_write(codec, ES8323_DACCONTROL3,0x60);  //SOFT RAMP RATE=32LRCKS/STEP,Enable ZERO-CROSS CHECK,DAC unMUTE
     snd_soc_write(codec, ES8323_DACCONTROL16,0x12);  //Left DAC TO Left IXER
     snd_soc_write(codec, ES8323_DACCONTROL17,0xb8);  //Left DAC TO Left MIXER
     snd_soc_write(codec, ES8323_DACCONTROL18,0x38);
     snd_soc_write(codec, ES8323_DACCONTROL19,0x38);
     snd_soc_write(codec, ES8323_DACCONTROL20,0xb8);
+
     snd_soc_write(codec, ES8323_CHIPPOWER,0x00); //aa //START DLL and state-machine,START DSM
-    snd_soc_write(codec, ES8323_DACCONTROL3,0x06);  //SOFT RAMP RATE=32LRCKS/STEP,Enable ZERO-CROSS CHECK,DAC MUTE
     msleep(100);
-    snd_soc_write(codec, ES8323_DACCONTROL24,0x00);
-    snd_soc_write(codec, ES8323_DACCONTROL25,0x00);
-    snd_soc_write(codec, ES8323_DACCONTROL26,0x08);
-    snd_soc_write(codec, ES8323_DACCONTROL27,0x08);
+    snd_soc_write(codec, ES8323_DACCONTROL24,es8323_DEF_VOL);
+    snd_soc_write(codec, ES8323_DACCONTROL25,es8323_DEF_VOL);
+    snd_soc_write(codec, ES8323_DACCONTROL26,es8323_DEF_VOL);
+    snd_soc_write(codec, ES8323_DACCONTROL27,es8323_DEF_VOL);
 #endif
 
 	snd_soc_add_codec_controls(codec, es8323_snd_controls,
@@ -1087,7 +1058,7 @@ static int es8323_probe(struct snd_soc_codec *codec)
 
 static int es8323_remove(struct snd_soc_codec *codec)
 {
-    printk("es8323_remove SND_SOC_BIAS_OFF\n");
+    DBG("es8323_remove SND_SOC_BIAS_OFF\n");
 	es8323_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
@@ -1229,22 +1200,22 @@ int  mic_state_switch()
 {
 	printk("%s %d\n",__FUNCTION__, es8323_mic_state);
 	if(es8323_mic_state == 0) {
-        printk("es8323_hp_det_gpio value %d\n",gpio_get_value(es8323_hp_det_gpio));
+        DBG("es8323_hp_det_gpio value %d\n",gpio_get_value(es8323_hp_det_gpio));
 		if(es8323_hp_det_action_value == gpio_get_value(es8323_hp_det_gpio)){
-			printk("hp_det = 0,deinsert hp\n");
-			printk("hp mic use board\n");
+			DBG("hp_det = 0,deinsert hp\n");
+			DBG("hp mic use board\n");
 			snd_soc_write(es8323_codec, 0x0b,0x02);
 		}else if(!(es8323_hp_det_action_value) == gpio_get_value(es8323_hp_det_gpio)){
-            printk("es8323_hp_det_gpio value %d\n",gpio_get_value(es8323_hp_det_gpio));
-			printk("hp_det = 1,insert hp\n");
-			printk("hp mic use headphone\n");
+            DBG("es8323_hp_det_gpio value %d\n",gpio_get_value(es8323_hp_det_gpio));
+			DBG("hp_det = 1,insert hp\n");
+			DBG("hp mic use headphone\n");
 			snd_soc_write(es8323_codec, 0x0b,0x82);
 		}
 	} else if(es8323_mic_state == 1) {
-		printk("hp mic use board\n");
+		DBG("hp mic use board\n");
 		snd_soc_write(es8323_codec, 0x0b,0x02);
 	} else if(es8323_mic_state == 2) {
-		printk("hp mic use headphone\n");
+		DBG("hp mic use headphone\n");
 		snd_soc_write(es8323_codec, 0x0b,0x82);
 	}
 
@@ -1259,6 +1230,7 @@ int es8323_mic_state_ctrl(int cmd, char *ch) {
 	char buf[2];
 	loff_t pos;
 	fp = filp_open("/data/es8323_mic_state", O_RDWR | O_CREAT, 0666);
+//	fp = filp_open("/proc/es8323_mic_state", O_RDWR | O_CREAT, 0666);
 	if (IS_ERR(fp)) {
 		printk("es8323_create file error\n");
 		return -1;
@@ -1268,7 +1240,7 @@ int es8323_mic_state_ctrl(int cmd, char *ch) {
 	pos = 0;
 	vfs_read(fp, buf, sizeof(buf), &pos);
 	buf[1] = 0;
-	printk("es8323_mic_state_ctrl read: %s\n", buf);
+	DBG("es8323_mic_state_ctrl read: %s\n", buf);
 	if(cmd == MIC_STATE_INIT) {
 		if(buf[0] >= '0' && buf[0] <= '2') {
 			es8323_mic_state = buf[0] - '0';
@@ -1288,7 +1260,7 @@ int es8323_mic_state_ctrl(int cmd, char *ch) {
 			pos = 0;
 			vfs_write(fp, buf, sizeof(buf), &pos);
 			mic_state_switch();
-			printk("es8323_mic_state_ctrl es8323_mic_state=%d write: %s \n", es8323_mic_state ,ch);
+			DBG("es8323_mic_state_ctrl es8323_mic_state=%d write: %s \n", es8323_mic_state ,ch);
 		}
 	} else if(cmd == MIC_STATE_READ) {
 		*ch = buf[0];
@@ -1310,7 +1282,7 @@ static ssize_t mic_state_store(struct device *dev,
 {
 	const char * p=_buf;
 	u32 reg, val;
-	printk("write: %s\n", &_buf[0]);
+	DBG("write: %s\n", &_buf[0]);
 	if(_buf[0] >= '0' && _buf[0] <= '2') {
 		es8323_mic_state_ctrl(MIC_STATE_WIRTE, &_buf[0]);
 	}
@@ -1392,7 +1364,7 @@ static int es8323_i2c_probe(struct i2c_client *i2c,
 				return ret;
 	}
 
-	printk("es8323 probe i2c recv ok\n");
+	DBG("es8323 probe i2c recv ok\n");
 
 	ret =  snd_soc_register_codec(&i2c->dev,
 			&soc_codec_dev_es8323, &es8323_dai, 1);
@@ -1449,7 +1421,7 @@ void es8323_i2c_shutdown(struct i2c_client *client)
 
     snd_soc_write(es8323_codec, ES8323_CONTROL2, 0x58);
 	snd_soc_write(es8323_codec, ES8323_CONTROL1, 0x32);
-    snd_soc_write(es8323_codec, ES8323_CHIPPOWER, 0xff);
+    snd_soc_write(es8323_codec, ES8323_CHIPPOWER, 0xf3);
   	snd_soc_write(es8323_codec, ES8323_DACPOWER, 0xc0);
 
   	snd_soc_write(es8323_codec, ES8323_DACCONTROL26, 0x00);
