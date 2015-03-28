@@ -89,7 +89,7 @@ bool ap_cfg_running = FALSE;
 bool ap_fw_loaded = FALSE;
 
 //(gwl)
-#define CONFIG_BCMDHD_CONFIG_PATH "/system/etc/firmware/config.txt"
+#define CONFIG_BCMDHD_CONFIG_PATH "/lib/firmware/bcmwifi/config.txt"
 extern char CONFIG_BCMDHD_FW_PATH[];
 extern char CONFIG_BCMDHD_NVRAM_PATH[];
 
