@@ -295,10 +295,10 @@ static void rk3288_hdmi_irq_work_func(struct work_struct *work)
 {
 	if (hdmi_dev->enable) {
 		rk3288_hdmi_dev_irq(0, hdmi_dev);
+    }
 		queue_delayed_work(hdmi_dev->workqueue,
 				   &(hdmi_dev->delay_work),
 				   msecs_to_jiffies(50));
-	}
 }
 #endif
 static struct hdmi_property rk3288_hdmi_property = {
