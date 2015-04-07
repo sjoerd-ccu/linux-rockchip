@@ -225,6 +225,7 @@ int snd_dmaengine_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
+        dmaengine_terminate_all(prtd->dma_chan);
 		ret = dmaengine_pcm_prepare_and_submit(substream);
 		if (ret)
 			return ret;
