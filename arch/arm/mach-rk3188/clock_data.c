@@ -3679,7 +3679,6 @@ static int __init bootloader_setup(char *str)
 	}
 	return 0;
 }
-early_param("androidboot.bootloader", bootloader_setup);
 
 int support_uboot_display(void)
 {
