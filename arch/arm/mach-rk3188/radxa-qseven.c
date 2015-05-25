@@ -1948,6 +1948,13 @@ static  struct pmu_info  rk808_ldo_info[] = {
 
 
 static struct i2c_board_info __initdata i2c1_info[] = {
+#if defined (CONFIG_SND_SOC_WM8962)
+    {
+        .type = "wm8962",
+        .addr = 0x1a,
+        .flags = 0,
+    },
+#endif
 #if defined (CONFIG_MFD_WM831X_I2C)
 	{
 		.type          = "wm8326",

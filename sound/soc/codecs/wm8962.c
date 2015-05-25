@@ -106,13 +106,13 @@ WM8962_REGULATOR_EVENT(6)
 WM8962_REGULATOR_EVENT(7)
 
 static const u16 wm8962_reg[WM8962_MAX_REGISTER + 1] = {
-	[0] = 0x009F,     /* R0     - Left Input volume */
-	[1] = 0x049F,     /* R1     - Right Input volume */
+	[0] = 0x003C,     /* R0     - Left Input volume */
+	[1] = 0x003C,     /* R1     - Right Input volume */
 	[2] = 0x0000,     /* R2     - HPOUTL volume */
 	[3] = 0x0000,     /* R3     - HPOUTR volume */
 	[4] = 0x0020,     /* R4     - Clocking1 */
 	[5] = 0x0018,     /* R5     - ADC & DAC Control 1 */
-	[6] = 0x2008,     /* R6     - ADC & DAC Control 2 */
+	[6] = 0x2009,     /* R6     - ADC & DAC Control 2 */
 	[7] = 0x000A,     /* R7     - Audio Interface 0 */
 	[8] = 0x01E4,     /* R8     - Clocking2 */
 	[9] = 0x0300,     /* R9     - Audio Interface 1 */
@@ -122,12 +122,12 @@ static const u16 wm8962_reg[WM8962_MAX_REGISTER + 1] = {
 	[14] = 0x0040,     /* R14    - Audio Interface 2 */
 	[15] = 0x6243,     /* R15    - Software Reset */
 
-	[17] = 0x007B,     /* R17    - ALC1 */
+	[17] = 0x03FB,     /* R17    - ALC1 */
 	[18] = 0x0000,     /* R18    - ALC2 */
 	[19] = 0x1C32,     /* R19    - ALC3 */
-	[20] = 0x3200,     /* R20    - Noise Gate */
-	[21] = 0x00C0,     /* R21    - Left ADC volume */
-	[22] = 0x00C0,     /* R22    - Right ADC volume */
+	[20] = 0x327B,     /* R20    - Noise Gate */
+	[21] = 0x00F8,     /* R21    - Left ADC volume */
+	[22] = 0x00F8,     /* R22    - Right ADC volume */
 	[23] = 0x0160,     /* R23    - Additional control(1) */
 	[24] = 0x0000,     /* R24    - Additional control(2) */
 	[25] = 0x0000,     /* R25    - Pwr Mgmt (1) */
@@ -137,12 +137,12 @@ static const u16 wm8962_reg[WM8962_MAX_REGISTER + 1] = {
 
 	[30] = 0x005E,     /* R30    - Clocking 3 */
 	[31] = 0x0000,     /* R31    - Input mixer control (1) */
-	[32] = 0x0145,     /* R32    - Left input mixer volume */
-	[33] = 0x0145,     /* R33    - Right input mixer volume */
+	[32] = 0x017D,     /* R32    - Left input mixer volume */
+	[33] = 0x017D,     /* R33    - Right input mixer volume */
 	[34] = 0x0009,     /* R34    - Input mixer control (2) */
 	[35] = 0x0003,     /* R35    - Input bias control */
-	[37] = 0x0008,     /* R37    - Left input PGA control */
-	[38] = 0x0008,     /* R38    - Right input PGA control */
+	[37] = 0x0002,     /* R37    - Left input PGA control */
+	[38] = 0x0002,     /* R38    - Right input PGA control */
 
 	[40] = 0x0000,     /* R40    - SPKOUTL volume */
 	[41] = 0x0000,     /* R41    - SPKOUTR volume */
@@ -1989,6 +1989,8 @@ static const unsigned int classd_tlv[] = {
 	7, 7, TLV_DB_SCALE_ITEM(1200, 0, 0),
 };
 
+static const DECLARE_TLV_DB_SCALE(alc_tlv, -7650, 150, 0);
+
 /* The VU bits for the headphones are in a different register to the mute
  * bits and only take effect on the PGA if it is actually powered.
  */
@@ -2088,7 +2090,7 @@ SOC_DOUBLE_R_TLV("Sidetone Volume", WM8962_DAC_DSP_MIXING_1,
 
 SOC_DOUBLE_R_TLV("Digital Playback Volume", WM8962_LEFT_DAC_VOLUME,
 		 WM8962_RIGHT_DAC_VOLUME, 1, 127, 0, digital_tlv),
-SOC_SINGLE("DAC High Performance Switch", WM8962_ADC_DAC_CONTROL_2, 0, 1, 0),
+//SOC_SINGLE("DAC High Performance Switch", WM8962_ADC_DAC_CONTROL_2, 0, 1, 0),
 
 SOC_SINGLE("ADC High Performance Switch", WM8962_ADDITIONAL_CONTROL_1,
 	   5, 1, 0),
@@ -2127,6 +2129,7 @@ SOC_SINGLE_TLV("HPMIXR MIXINR Volume", WM8962_HEADPHONE_MIXER_4,
 
 SOC_SINGLE_TLV("Speaker Boost Volume", WM8962_CLASS_D_CONTROL_2, 0, 7, 0,
 	       classd_tlv),
+SOC_SINGLE_TLV("ALC THR", WM8962_NOISE_GATE, 3, 31, 0, alc_tlv),
 };
 
 static const struct snd_kcontrol_new wm8962_spk_mono_controls[] = {
@@ -2327,13 +2330,13 @@ static int hp_event(struct snd_soc_dapm_widget *w,
 				    WM8962_HP1L_ENA_DLY | WM8962_HP1R_ENA_DLY |
 				    WM8962_HP1L_ENA_OUTP |
 				    WM8962_HP1R_ENA_OUTP, 0);
-				    
+
 		break;
 
 	default:
 		BUG();
 		return -EINVAL;
-	
+
 	}
 
 	return 0;
@@ -2851,18 +2854,20 @@ static int wm8962_set_bias_level(struct snd_soc_codec *codec,
 		/* VMID 2*50k */
 		snd_soc_update_bits(codec, WM8962_PWR_MGMT_1,
 				    WM8962_VMID_SEL_MASK, 0x80);
+		snd_soc_update_bits(codec, WM8962_PWR_MGMT_1,
+				    WM8962_MICBIAS_ENA_MASK, 0x02);
 		break;
 
 	case SND_SOC_BIAS_STANDBY:
 		if (codec->dapm.bias_level == SND_SOC_BIAS_OFF) {
-			ret = regulator_bulk_enable(ARRAY_SIZE(wm8962->supplies),
-						    wm8962->supplies);
-			if (ret != 0) {
-				dev_err(codec->dev,
-					"Failed to enable supplies: %d\n",
-					ret);
-				return ret;
-			}
+//			ret = regulator_bulk_enable(ARRAY_SIZE(wm8961->supplies),
+//						    wm8962->supplies);
+//			if (ret != 0) {
+//				dev_err(codec->dev,
+//					"Failed to enable supplies: %d\n",
+//					ret);
+//				return ret;
+//			}
 
 			wm8962_sync_cache(codec);
 
@@ -2903,8 +2908,8 @@ static int wm8962_set_bias_level(struct snd_soc_codec *codec,
 				    WM8962_STARTUP_BIAS_ENA |
 				    WM8962_VMID_BUF_ENA, 0);
 
-		regulator_bulk_disable(ARRAY_SIZE(wm8962->supplies),
-				       wm8962->supplies);
+//		regulator_bulk_disable(ARRAY_SIZE(wm8962->supplies),
+//				       wm8962->supplies);
 		break;
 	}
 	codec->dapm.bias_level = level;
@@ -3762,14 +3767,14 @@ static int wm8962_probe(struct snd_soc_codec *codec)
 
 	for (i = 0; i < ARRAY_SIZE(wm8962->supplies); i++)
 		wm8962->supplies[i].supply = wm8962_supply_names[i];
-
+/*
 	ret = regulator_bulk_get(codec->dev, ARRAY_SIZE(wm8962->supplies),
 				 wm8962->supplies);
 	if (ret != 0) {
 		dev_err(codec->dev, "Failed to request supplies: %d\n", ret);
 		goto err;
 	}
-
+*/
 	wm8962->disable_nb[0].notifier_call = wm8962_regulator_event_0;
 	wm8962->disable_nb[1].notifier_call = wm8962_regulator_event_1;
 	wm8962->disable_nb[2].notifier_call = wm8962_regulator_event_2;
@@ -3780,7 +3785,8 @@ static int wm8962_probe(struct snd_soc_codec *codec)
 	wm8962->disable_nb[7].notifier_call = wm8962_regulator_event_7;
 
 	/* This should really be moved into the regulator core */
-	for (i = 0; i < ARRAY_SIZE(wm8962->supplies); i++) {
+/*
+    for (i = 0; i < ARRAY_SIZE(wm8962->supplies); i++) {
 		ret = regulator_register_notifier(wm8962->supplies[i].consumer,
 						  &wm8962->disable_nb[i]);
 		if (ret != 0) {
@@ -3796,7 +3802,7 @@ static int wm8962_probe(struct snd_soc_codec *codec)
 		dev_err(codec->dev, "Failed to enable supplies: %d\n", ret);
 		goto err_get;
 	}
-
+*/
 	ret = snd_soc_read(codec, WM8962_SOFTWARE_RESET);
 	if (ret < 0) {
 		dev_err(codec->dev, "Failed to read ID register\n");
@@ -3815,7 +3821,7 @@ static int wm8962_probe(struct snd_soc_codec *codec)
 			ret);
 		goto err_enable;
 	}
-	
+
 	dev_info(codec->dev, "customer id %x revision %c\n",
 		 (ret & WM8962_CUST_ID_MASK) >> WM8962_CUST_ID_SHIFT,
 		 ((ret & WM8962_CHIP_REV_MASK) >> WM8962_CHIP_REV_SHIFT)
@@ -3837,7 +3843,7 @@ static int wm8962_probe(struct snd_soc_codec *codec)
 			    WM8962_OSC_ENA | WM8962_PLL2_ENA | WM8962_PLL3_ENA,
 			    0);
 
-	regulator_bulk_disable(ARRAY_SIZE(wm8962->supplies), wm8962->supplies);
+//	regulator_bulk_disable(ARRAY_SIZE(wm8962->supplies), wm8962->supplies);
 
 	if (pdata) {
 		/* Apply static configuration for GPIOs */
@@ -3946,9 +3952,9 @@ static int wm8962_probe(struct snd_soc_codec *codec)
 	return 0;
 
 err_enable:
-	regulator_bulk_disable(ARRAY_SIZE(wm8962->supplies), wm8962->supplies);
+//	regulator_bulk_disable(ARRAY_SIZE(wm8962->supplies), wm8962->supplies);
 err_get:
-	regulator_bulk_free(ARRAY_SIZE(wm8962->supplies), wm8962->supplies);
+//  regulator_bulk_free(ARRAY_SIZE(wm8962->supplies), wm8962->supplies);
 err:
 	return ret;
 }
@@ -3970,7 +3976,7 @@ static int wm8962_remove(struct snd_soc_codec *codec)
 	for (i = 0; i < ARRAY_SIZE(wm8962->supplies); i++)
 		regulator_unregister_notifier(wm8962->supplies[i].consumer,
 					      &wm8962->disable_nb[i]);
-	regulator_bulk_free(ARRAY_SIZE(wm8962->supplies), wm8962->supplies);
+//  regulator_bulk_free(ARRAY_SIZE(wm8962->supplies), wm8962->supplies);
 
 	return 0;
 }
@@ -3995,6 +4001,8 @@ static __devinit int wm8962_i2c_probe(struct i2c_client *i2c,
 	struct wm8962_priv *wm8962;
 	int ret;
 
+    printk("%s\n", __FUNCTION__);
+
 	wm8962 = kzalloc(sizeof(struct wm8962_priv), GFP_KERNEL);
 	if (wm8962 == NULL)
 		return -ENOMEM;
@@ -4004,8 +4012,13 @@ static __devinit int wm8962_i2c_probe(struct i2c_client *i2c,
 	ret = snd_soc_register_codec(&i2c->dev,
 				     &soc_codec_dev_wm8962, &wm8962_dai, 1);
 	if (ret < 0)
+    {
+        printk("snd soc register codec failed\n");
 		kfree(wm8962);
+    } else {
 
+        printk("snd soc register codec secuss\n");
+    }
 	return ret;
 }
 
@@ -4024,7 +4037,7 @@ MODULE_DEVICE_TABLE(i2c, wm8962_i2c_id);
 
 static struct i2c_driver wm8962_i2c_driver = {
 	.driver = {
-		.name = "wm8962",
+		.name = "wm8962-codec",
 		.owner = THIS_MODULE,
 	},
 	.probe =    wm8962_i2c_probe,
