@@ -26,6 +26,9 @@ config MACH_RK3188_RADXA_ROCK_PRO
 
 endif
 
+config MACH_RK3188_RADXA_Q7
+	bool "RK3188 Radxa Qsenven"
+
 config MACH_RK3188_TB
 	bool "RK3188 Top Board"
 
