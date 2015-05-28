@@ -62,7 +62,7 @@ int  mic_state_switch();
 static int playback_flag = 0;
 
 #ifndef es8323_DEF_VOL
-#define es8323_DEF_VOL			0x15
+#define es8323_DEF_VOL			0x21
 #endif
 
 static int es8323_set_bias_level(struct snd_soc_codec *codec,enum snd_soc_bias_level level);
@@ -203,7 +203,7 @@ static int es8323_reset(struct snd_soc_codec *codec)
 }
 
 static const char *es8323_line_texts[] = {
-	"Line 1", "Line 2", "PGA"};
+	"Line 1", "Line 2", "Mic PGA"};
 
 static const unsigned int es8323_line_values[] = {
 	0, 1, 3};
@@ -215,26 +215,47 @@ static const char *deemph_txt[] = {"None", "32Khz", "44.1Khz", "48Khz"};
 static const char *adcpol_txt[] = {"Normal", "L Invert", "R Invert","L + R Invert"};
 static const char *es8323_mono_mux[] = {"Stereo", "Mono (Left)","Mono (Right)"};
 static const char *es8323_diff_sel[] = {"Line 1", "Line 2"};
+static const char *es8323_adcdata_sel[] = {"Left-Left Right-Right", "Left-Left Right-Left", "Left-Right Right-Right", "Left-Right Right-Left"};
+static const char *es8323_i2s_polarity[] = {"normal", "inverted"};
+static const char *es8323_adc_dataworth[] = {"24-bit", "20-bit", "18-bit", "16-bit", "32-bit"};
+static const char *es8323_dai_format[] = {"I2S", "I2S Left Justify", "I2S Right Justify", "DSP/PCM"};
+static const char *es8323_fs_mode[] = {"single speed", "double speed"};
+static const char *es8323_fs_ratio[] = {"128", "192", "256", "384", "512", "576", "768", "1024", "1152", "1408", "1536", "2112", "2304",
+                                        "125", "136", "250", "272", "375", "500", "544", "750", "1000", "1088", "1496", "1500"};
+static const unsigned int es8323_adcfsratio_value[] = {
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27};
+static const char *es8323_adcramp_rate[] = {"4 LRCLK", "8 LRCLK", "16 LRCLK", "32 LRCLK"};
+static const char *es8323_alc_mode[] = {"alc mode", "limiter mode"};
 
 static const struct soc_enum es8323_enum[]={
-	SOC_VALUE_ENUM_SINGLE(ES8323_DACCONTROL16, 3, 7, ARRAY_SIZE(es8323_line_texts), es8323_line_texts, es8323_line_values),/* LLINE */
-	SOC_VALUE_ENUM_SINGLE(ES8323_DACCONTROL16, 0, 7, ARRAY_SIZE(es8323_line_texts), es8323_line_texts, es8323_line_values),/* rline	*/
-	SOC_VALUE_ENUM_SINGLE(ES8323_ADCCONTROL2, 6, 3, ARRAY_SIZE(es8323_pga_sel), es8323_line_texts, es8323_line_values),/* Left PGA Mux */
-	SOC_VALUE_ENUM_SINGLE(ES8323_ADCCONTROL2, 4, 3, ARRAY_SIZE(es8323_pga_sel), es8323_line_texts, es8323_line_values),/* Right PGA Mux */
-	SOC_ENUM_SINGLE(ES8323_DACCONTROL7, 2, 8, stereo_3d_txt),/* stereo-3d */
-	SOC_ENUM_SINGLE(ES8323_ADCCONTROL10, 6, 4, alc_func_txt),/*alc func*/
-	SOC_ENUM_SINGLE(ES8323_ADCCONTROL14, 1, 2, ng_type_txt),/*noise gate type*/
-	SOC_ENUM_SINGLE(ES8323_DACCONTROL6, 6, 4, deemph_txt),/*Playback De-emphasis*/
-	SOC_ENUM_SINGLE(ES8323_ADCCONTROL6, 6, 4, adcpol_txt),
-	SOC_ENUM_SINGLE(ES8323_ADCCONTROL3, 3, 3, es8323_mono_mux),
-	SOC_ENUM_SINGLE(ES8323_ADCCONTROL3, 7, 2, es8323_diff_sel),
+	SOC_VALUE_ENUM_SINGLE(ES8323_DACCONTROL16, 3, 7, ARRAY_SIZE(es8323_line_texts), es8323_line_texts, es8323_line_values),/* LLINE *//*0*/
+	SOC_VALUE_ENUM_SINGLE(ES8323_DACCONTROL16, 0, 7, ARRAY_SIZE(es8323_line_texts), es8323_line_texts, es8323_line_values),/* rline	*//*1*/
+	SOC_VALUE_ENUM_SINGLE(ES8323_ADCCONTROL2, 6, 3, ARRAY_SIZE(es8323_pga_sel), es8323_pga_sel, es8323_line_values),/* Left PGA Mux *//*2*/
+	SOC_VALUE_ENUM_SINGLE(ES8323_ADCCONTROL2, 4, 3, ARRAY_SIZE(es8323_pga_sel), es8323_pga_sel, es8323_line_values),/* Right PGA Mux *//*3*/
+	SOC_ENUM_SINGLE(ES8323_DACCONTROL7, 2, 8, stereo_3d_txt),/* stereo-3d *//*4*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL10, 6, 4, alc_func_txt),/*alc func*//*5*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL14, 1, 2, ng_type_txt),/*noise gate type*//*6*/
+	SOC_ENUM_SINGLE(ES8323_DACCONTROL6, 6, 4, deemph_txt),/*Playback De-emphasis*//*7*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL6, 6, 4, adcpol_txt),/*8*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL3, 3, 3, es8323_mono_mux),/*9*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL3, 7, 2, es8323_diff_sel),/*10*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL4, 6, 4, es8323_adcdata_sel),/*11*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL4, 5, 2, es8323_i2s_polarity),/*12*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL4, 2, 5, es8323_adc_dataworth),/*13*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL4, 0, 4, es8323_dai_format),/*14*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL5, 5, 2, es8323_fs_mode),/*15*/
+	SOC_VALUE_ENUM_SINGLE(ES8323_ADCCONTROL5, 0, 0x1F, ARRAY_SIZE(es8323_fs_ratio), es8323_fs_ratio, es8323_adcfsratio_value),/* fs Ratio *//*16*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL7, 6, 4, es8323_adcramp_rate),/*17*/
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL13, 7, 2 , es8323_alc_mode),/*18*/
+
+	SOC_ENUM_SINGLE(ES8323_ADCCONTROL1, 1, 4, es8323_dai_format),/*19*/
 };
 
 static const DECLARE_TLV_DB_SCALE(pga_tlv, 0, 300, 0);
 static const DECLARE_TLV_DB_SCALE(adc_tlv, -9600, 50, 1);
 static const DECLARE_TLV_DB_SCALE(dac_tlv, -9600, 50, 1);
-static const DECLARE_TLV_DB_SCALE(out_tlv, -4500, 150, 0);
-static const DECLARE_TLV_DB_SCALE(bypass_tlv, -1500, 300, 0);
+static const DECLARE_TLV_DB_SCALE(out_tlv, -3000, 100, 0);
+static const DECLARE_TLV_DB_SCALE(bypass_tlv, -1500, 300, 1);
 
 static const struct snd_kcontrol_new es8323_snd_controls[] = {
     SOC_ENUM("3D Mode", es8323_enum[4]),
@@ -250,17 +271,34 @@ static const struct snd_kcontrol_new es8323_snd_controls[] = {
     SOC_ENUM("ALC Capture NG Type",es8323_enum[6]),
     SOC_SINGLE("ALC Capture NG Switch", ES8323_ADCCONTROL14, 0, 1, 0),
     SOC_SINGLE("ZC Timeout Switch", ES8323_ADCCONTROL13, 5, 1, 0),
-    SOC_DOUBLE_R_TLV("Capture Digital Volume", ES8323_ADCCONTROL8, ES8323_ADCCONTROL9,0, 255, 1, adc_tlv),
+    SOC_SINGLE("ALC Win Size", ES8323_ADCCONTROL13, 0, 31, 0),
+    SOC_DOUBLE_R_TLV("Capture Digital Volume", ES8323_ADCCONTROL8, ES8323_ADCCONTROL9,0, 192, 1, adc_tlv),
     SOC_SINGLE("Capture Mute", ES8323_ADCCONTROL7, 2, 1, 0),
-    SOC_SINGLE_TLV("Left Channel Capture Volume",	ES8323_ADCCONTROL1, 4, 15, 0, bypass_tlv),
-    SOC_SINGLE_TLV("Right Channel Capture Volume",	ES8323_ADCCONTROL1, 0, 15, 0, bypass_tlv),
+    SOC_SINGLE_TLV("Left Channel Capture Volume",	ES8323_ADCCONTROL1, 4, 8, 0, pga_tlv),
+    SOC_SINGLE_TLV("Right Channel Capture Volume",	ES8323_ADCCONTROL1, 0, 8, 0, pga_tlv),
+    SOC_ENUM("ADC Data Sel",es8323_enum[11]),
+    SOC_ENUM("I2S LR Polarity",es8323_enum[12]),
+    SOC_ENUM("I2S Data Width",es8323_enum[13]),
+    SOC_ENUM("ADC DAI Format",es8323_enum[14]),
+    SOC_ENUM("ADC Fs Mode",es8323_enum[15]),
+    SOC_ENUM("ADC Fs Ratio",es8323_enum[16]),
+    SOC_ENUM("ADC Adcramp Rate",es8323_enum[17]),
+    SOC_ENUM("ADC Alc Mode",es8323_enum[18]),
     SOC_ENUM("Playback De-emphasis", es8323_enum[7]),
     SOC_ENUM("Capture Polarity", es8323_enum[8]),
     SOC_DOUBLE_R_TLV("PCM Volume", ES8323_DACCONTROL4, ES8323_DACCONTROL5, 0, 255, 1, dac_tlv),
     SOC_SINGLE_TLV("Left Mixer Left Bypass Volume", ES8323_DACCONTROL17, 3, 7, 1, bypass_tlv),
     SOC_SINGLE_TLV("Right Mixer Right Bypass Volume", ES8323_DACCONTROL20, 3, 7, 1, bypass_tlv),
-    SOC_DOUBLE_R_TLV("Output 1 Playback Volume", ES8323_DACCONTROL24, ES8323_DACCONTROL25, 0, 64, 0, out_tlv),
-    SOC_DOUBLE_R_TLV("Output 2 Playback Volume", ES8323_DACCONTROL26, ES8323_DACCONTROL27, 0, 64, 0, out_tlv),
+    SOC_DOUBLE_R_TLV("Output 1 Playback Volume", ES8323_DACCONTROL24, ES8323_DACCONTROL25, 0, 33, 0, out_tlv),
+    SOC_DOUBLE_R_TLV("Output 2 Playback Volume", ES8323_DACCONTROL26, ES8323_DACCONTROL27, 0, 33, 0, out_tlv),
+    SOC_SINGLE("ADC Left HPF", ES8323_ADCCONTROL6, 5, 1, 0),
+    SOC_SINGLE("ADC Right HPF", ES8323_ADCCONTROL6, 4, 1, 0),
+    SOC_SINGLE("ADC Soft Ramp", ES8323_ADCCONTROL7, 5, 1, 0),
+    SOC_SINGLE("ADC Left Control L/R Gain", ES8323_ADCCONTROL7, 3, 1, 0),
+
+    SOC_ENUM("DAC DAI Format",es8323_enum[19]),
+
+
 };
 
 
