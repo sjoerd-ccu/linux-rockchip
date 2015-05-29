@@ -59,7 +59,6 @@ static int HP_IRQ=0;
 static int hp_irq_flag = 0;
 int  mic_state_switch();
 
-static int playback_flag = 0;
 
 #ifndef es8323_DEF_VOL
 #define es8323_DEF_VOL			0x21
@@ -716,12 +715,10 @@ static int es8323_pcm_startup(struct snd_pcm_substream *substream,
 	struct es8323_priv *es8323 = snd_soc_codec_get_drvdata(codec);
     u16 tmp;
 
-    gpio_set_value(es8323_spk_con_gpio, 0);
 	if (!es8323->is_startup) {
 		es8323->is_startup = 1;
 		snd_soc_write(codec, ES8323_ADCPOWER, 0x00);    //ADC ON
 	 	snd_soc_write(codec, ES8323_DACPOWER, 0x3c);    //DAC ON
-		snd_soc_write(codec, ES8323_CHIPPOWER, 0x04);   //CHIP RECORD MODE
 		DBG("es8323 is start up!!!!\n");
 	}else
     {
@@ -798,8 +795,8 @@ static int es8323_pcm_hw_params(struct snd_pcm_substream *substream,
     if (coeff >= 0)
 	{
 		 snd_soc_write(codec, ES8323_IFACE, srate);  //bclk div,mclkdiv2
-		 snd_soc_write(codec, ES8323_ADCCONTROL5, coeff_div[coeff].sr | (coeff_div[coeff].usb) << 4);
-		 snd_soc_write(codec, ES8323_DACCONTROL2, coeff_div[coeff].sr | (coeff_div[coeff].usb) << 4);
+		 snd_soc_write(codec, ES8323_ADCCONTROL5, coeff_div[coeff].sr | (coeff_div[coeff].usb) << 4 | 0x01 << 5);
+		 snd_soc_write(codec, ES8323_DACCONTROL2, coeff_div[coeff].sr | (coeff_div[coeff].usb) << 4 | 0x01 << 5);
 	}
 	if (codecfirstuse == 0)
 	{
@@ -816,14 +813,11 @@ static int es8323_mute(struct snd_soc_dai *dai, int mute)
 	struct snd_soc_codec *codec = dai->codec;
 	if (mute)
 	 {
-        playback_flag = 0;
         DBG("es8323 mute\n");
 	 }
 	else
 	{
         DBG("es8323 unmute\n");
-		snd_soc_write(codec, ES8323_CHIPPOWER, 0x08);       //DAC POWER ON playback
-        playback_flag = 1;
 	}
     on_off_ext_amp(!mute);
 
@@ -845,21 +839,12 @@ static int es8323_set_bias_level(struct snd_soc_codec *codec,
   	    snd_soc_write(codec, ES8323_ANAVOLMANAG, 0x7C);
   	    snd_soc_write(codec, ES8323_CHIPLOPOW1, 0x00);
   	    snd_soc_write(codec, ES8323_CHIPLOPOW2, 0x00);
-		snd_soc_write(codec, ES8323_CHIPPOWER, 0x04);
 		snd_soc_write(codec, ES8323_ADCPOWER, 0x00);
         DBG("SND_SOC_BIAS_PREPARE\n");
 		break;
 	case SND_SOC_BIAS_STANDBY:
   	    snd_soc_write(codec, ES8323_CHIPLOPOW1, 0x00);
   	    snd_soc_write(codec, ES8323_CHIPLOPOW2, 0x00);
-        if(playback_flag){
-    		snd_soc_write(codec, ES8323_CHIPPOWER, 0x08);
-            gpio_set_value(es8323_spk_con_gpio, 1);
-        }
-        else {
-    		snd_soc_write(codec, ES8323_CHIPPOWER, 0x04);
-            gpio_set_value(es8323_spk_con_gpio, 0);
-        }
 		snd_soc_write(codec, ES8323_ADCPOWER, 0x00);
         DBG("SND_SOC_BIAS_STANDBY\n");
 		break;
@@ -950,7 +935,6 @@ static int entry_read(char *page, char **start, off_t off,
 	DBG("Enter::%s----",__FUNCTION__);
 	snd_soc_write(es8323_codec, ES8323_ADCPOWER, 0xff);
 	snd_soc_write(es8323_codec, ES8323_DACPOWER, 0xc0);
-	snd_soc_write(es8323_codec, ES8323_CHIPPOWER, 0xf3);
 
 	len = sprintf(page, "es8323 suspend...\n");
 
@@ -1056,18 +1040,18 @@ static int es8323_probe(struct snd_soc_codec *codec)
     snd_soc_write(codec, ES8323_ADCCONTROL2,0xf0);  //ADC INPUT=LIN2/RIN2
     snd_soc_write(codec, ES8323_ADCCONTROL3, 0x02);  //ADC INPUT=LIN1/RIN1 //02
     snd_soc_write(codec, ES8323_ADCCONTROL4, 0x4c);  //I2S-16BIT
-    snd_soc_write(codec, ES8323_ADCCONTROL5, 0x02);  //MCLK/LRCK=256
+    snd_soc_write(codec, ES8323_ADCCONTROL5, 0x22);  //MCLK/LRCK=256
     snd_soc_write(codec, ES8323_ADCCONTROL8, 0x00);  //ADC Left Volume=0db
     snd_soc_write(codec, ES8323_ADCCONTROL9, 0x00);  //ADC Right Volume=0db
 //    snd_soc_write(codec, ES8323_ADCCONTROL7, 0x30);  //ADC umute
-    snd_soc_write(codec, ES8323_ADCCONTROL10, 0xea); // ALC stereo MAXGAIN: 35.5dB,  MINGAIN: +6dB (Record Volume increased!)
+    snd_soc_write(codec, ES8323_ADCCONTROL10, 0xF3); // ALC stereo MAXGAIN: 35.5dB,  MINGAIN: +6dB (Record Volume increased!)
     snd_soc_write(codec, ES8323_ADCCONTROL11,0xc0);  //ALCLVL 7:4  ALCHLD 3:0
-    snd_soc_write(codec, ES8323_ADCCONTROL12,0x12);  //LCDCY 7:4   ALCATK 3:0
+    snd_soc_write(codec, ES8323_ADCCONTROL12,0x1a);  //LCDCY 7:4   ALCATK 3:0
     snd_soc_write(codec, ES8323_ADCCONTROL13,0x06);  //ALCMODE 7  ALCZC 6  TIME_OUT 5  WIN_SIZE 4:0
     snd_soc_write(codec, ES8323_ADCCONTROL14,0xc3);  //NGTH 7:3  NGG 2:1  NGAT 0
 
     snd_soc_write(codec, ES8323_DACCONTROL1,0x18);  //I2S-16BIT
-    snd_soc_write(codec, ES8323_DACCONTROL2,0x02);
+    snd_soc_write(codec, ES8323_DACCONTROL2,0x22);
     snd_soc_write(codec, ES8323_DACCONTROL4,0x00);  //DAC VOLUME=0DB
     snd_soc_write(codec, ES8323_DACCONTROL5,0x00);
     snd_soc_write(codec, ES8323_DACCONTROL3,0x60);  //SOFT RAMP RATE=32LRCKS/STEP,Enable ZERO-CROSS CHECK,DAC unMUTE
@@ -1459,7 +1443,6 @@ void es8323_i2c_shutdown(struct i2c_client *client)
 
     snd_soc_write(es8323_codec, ES8323_CONTROL2, 0x58);
 	snd_soc_write(es8323_codec, ES8323_CONTROL1, 0x32);
-    snd_soc_write(es8323_codec, ES8323_CHIPPOWER, 0xf3);
   	snd_soc_write(es8323_codec, ES8323_DACPOWER, 0xc0);
 
   	snd_soc_write(es8323_codec, ES8323_DACCONTROL26, 0x00);
