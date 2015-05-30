@@ -250,6 +250,19 @@ config SND_RK29_SOC_RK1000
 	  Say Y if you want to add support for SoC audio on rockchip
 	  with the RK1000.
 
+if SND_RK29_SOC_RK1000
+choice
+  bool "Select input for RK1000"
+    default SND_RK1000_MIC
+
+    config SND_RK1000_MIC
+        tristate  "MIC"
+
+    config SND_RK1000_LINEIN
+        tristate  "LINE IN"
+endchoice
+endif
+
 config SND_RK29_SOC_RK610
 	tristate "SoC I2S Audio support for rockchip - RK610"
 	depends on SND_RK29_SOC && MFD_RK610
