@@ -31,6 +31,11 @@
 #include <trace/events/asoc.h>
 #include <mach/gpio.h>
 #include <mach/iomux.h>
+#include <linux/sched.h>
+#include <linux/workqueue.h>
+#include <linux/proc_fs.h>
+#include <linux/interrupt.h>
+#include <linux/kernel.h>
 
 #include "rk1000_codec.h"
 #define RK1000_CODEC_PROC
@@ -64,6 +69,10 @@ static u8 gR0AReg = 0;  //用于记录R0A寄存器的值，用于改变采样率前通过R0A停止clk
 static u8 gR0BReg = 0;  //用于记录R0B寄存器的值，用于改变采样率前通过R0B停止interplate和decimation
 static u8 gR1314Reg = 0;  //用于记录R13,R14寄存器的值，用于FM音量为0时
 
+struct snd_soc_codec *codec_tmp;
+struct delayed_work inputsel_work;
+struct workqueue_struct *inputsel_queue;
+int rk1000_input = 1;
 /*
  * rk1000 register cache
  * We can't read the RK1000 register space when we
@@ -730,7 +739,7 @@ static int rk1000_codec_resume(struct snd_soc_codec *codec)
 	return 0;
 }
 
-static void rk1000_reg_init(struct snd_soc_codec *codec)
+static void rk1000_reg_init(struct snd_soc_codec *codec , int input_mode)
 {
 	rk1000_codec_write(codec,ACCELCODEC_R1D, 0x00);
     rk1000_codec_write(codec,ACCELCODEC_R17, 0xFF);  //AOL
@@ -803,23 +812,55 @@ static void rk1000_reg_init(struct snd_soc_codec *codec)
     rk1000_codec_write(codec,ACCELCODEC_R15, 0xC1);//rk1000_codec_write(codec,ACCELCODEC_R15, 0xCD);//by Vincent Hsiung
     rk1000_codec_write(codec,ACCELCODEC_R0C, 0x10|ASC_INPUT_VOL_0DB|ASC_INPUT_MUTE);   //LIL
     rk1000_codec_write(codec,ACCELCODEC_R0D, 0x10|ASC_INPUT_VOL_0DB);   //LIR
+
     rk1000_codec_write(codec,ACCELCODEC_R0E, 0x10|ASC_INPUT_VOL_0DB);   //MIC
-#ifdef CONFIG_SND_RK1000_MIC
-    rk1000_codec_write(codec,ACCELCODEC_R12, 0x4c|ASC_MIC_INPUT|ASC_MIC_BOOST_20DB);  //mic input and boost 20dB
-#endif
-#ifdef CONFIG_SND_RK1000_LINEIN
-    rk1000_codec_write(codec,ACCELCODEC_R12, 0x4c|ASC_LINE_INPUT);  //line in input and boost 20dB
-#endif
+
+    if(input_mode == MICIN)
+        rk1000_codec_write(codec,ACCELCODEC_R12, 0x4c|ASC_MIC_INPUT|ASC_MIC_BOOST_20DB);  //mic input and boost 20dB
+
+    if(input_mode == LINEIN)
+        rk1000_codec_write(codec,ACCELCODEC_R12, 0x4c|ASC_LINE_INPUT);  //line in input and boost 20dB
+
     rk1000_codec_write(codec,ACCELCODEC_R13, 0x00);
     rk1000_codec_write(codec,ACCELCODEC_R14, 0x00);
     gR1314Reg = 0x00;
     rk1000_codec_write(codec,ACCELCODEC_R1C, ASC_DEM_ENABLE);  //0x00);  //use default value
 }
 
+static void inputsel_func(struct work_struct *pwork)
+{
+//    printk("%s\n", __FUNCTION__);
+   struct file *fp;
+   mm_segment_t fs;
+   char buf[2];
+   loff_t pos;
+   fp = filp_open("/tmp/rk1000_input_sel", O_RDWR | O_CREAT, 0666);
+   if (IS_ERR(fp)) {
+        printk("rk1000_create file error\n");
+        return -1;
+    }
+    fs = get_fs();
+    set_fs(KERNEL_DS);
+    pos = 0;
+    vfs_read(fp, buf, sizeof(buf), &pos);
+    buf[1] = 0;
+    DBG("rk1000 read: %s\n", buf);
+    if (((buf[0]-'0') == MICIN) && (rk1000_input != MICIN))  {
+        rk1000_input = MICIN;
+        rk1000_reg_init(codec_tmp, MICIN);
+    } else if (((buf[0]-'0') == LINEIN) && (rk1000_input != LINEIN)){
+        rk1000_input = LINEIN;
+        rk1000_reg_init(codec_tmp, LINEIN);
+    }
+    filp_close(fp, NULL);
+    set_fs(fs);
+    queue_delayed_work(inputsel_queue, &inputsel_work, msecs_to_jiffies(1000));
+}
+
 static int rk1000_codec_probe(struct snd_soc_codec *codec)
 {
 	struct rk1000_codec_priv *rk1000_codec_priv = snd_soc_codec_get_drvdata(codec);
-
+    codec_tmp = codec;
 	int ret = 0;
 	DBG("%s::%d\n",__FUNCTION__,__LINE__);
 
@@ -837,7 +878,10 @@ static int rk1000_codec_probe(struct snd_soc_codec *codec)
 	if (codec->reg_cache == NULL)
 		return -ENOMEM;
 
-	rk1000_reg_init(codec);
+	rk1000_reg_init(codec, MICIN);
+    INIT_DELAYED_WORK(&inputsel_work, inputsel_func);
+    inputsel_queue = create_singlethread_workqueue("inputselqueue");
+    queue_delayed_work(inputsel_queue, &inputsel_work, msecs_to_jiffies(8000));
 //	snd_soc_add_controls(codec, rk1000_codec_snd_controls,
 //				ARRAY_SIZE(rk1000_codec_snd_controls));
 //	snd_soc_dapm_new_controls(codec, rk1000_codec_dapm_widgets,
