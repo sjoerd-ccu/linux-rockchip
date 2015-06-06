@@ -2125,6 +2125,7 @@ static struct i2c_board_info __initdata i2c2_info[] = {
 		.platform_data 	= &rk_hdmi_pdata,
 	},
 #endif
+/*
 #if defined(CONFIG_MFD_RK616)
 {
 		.type	       = "rk616",
@@ -2133,7 +2134,7 @@ static struct i2c_board_info __initdata i2c2_info[] = {
 		.platform_data = &rk616_pdata,
 },
 #endif
-
+*/
 };
 #endif
 
@@ -2153,6 +2154,15 @@ static struct rkdisplay_platform_data tv_data = {
 
 #ifdef CONFIG_I2C4_RK30
 static struct i2c_board_info __initdata i2c4_info[] = {
+    #if defined(CONFIG_MFD_RK616)
+    {
+		.type	       = "rk616",
+		.addr	       = 0x50,
+		.flags	       = 0,
+		.platform_data = &rk616_pdata,
+    },
+    #endif
+
     #if defined (CONFIG_SND_SOC_RT5616)
     {
                 .type                   = "rt5616",
