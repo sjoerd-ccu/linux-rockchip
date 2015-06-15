@@ -41,7 +41,7 @@ extern unsigned int MALI_DVFS_STEP;
 #define CONFIG_MALI_MIDGARD_FREQ_LOCK
 #endif
 
-void kbase_platform_dvfs_set_clock(kbase_device *kbdev, int freq);
+void kbase_platform_dvfs_set_clock(struct kbase_device *kbdev, int freq);
 void kbase_platform_dvfs_set_level(struct kbase_device *kbdev, int level);
 int kbase_platform_dvfs_get_level(int freq);
 

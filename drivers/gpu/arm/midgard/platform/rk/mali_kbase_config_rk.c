@@ -301,7 +301,7 @@ static kbase_attribute config_attributes[] = {
 	{
 	 KBASE_CONFIG_ATTR_PLATFORM_FUNCS,
 	 (uintptr_t) &platform_funcs},
-	
+#if 0	
 	{
 	 KBASE_CONFIG_ATTR_GPU_FREQ_KHZ_MAX,
 	 KBASE_VE_GPU_FREQ_KHZ_MAX},
@@ -309,7 +309,7 @@ static kbase_attribute config_attributes[] = {
 	{
 	 KBASE_CONFIG_ATTR_GPU_FREQ_KHZ_MIN,
 	 KBASE_VE_GPU_FREQ_KHZ_MIN},
-
+#endif
 #ifdef CONFIG_MALI_DEBUG
 /* Use more aggressive scheduling timeouts in debug builds for testing purposes */
 #if 0
