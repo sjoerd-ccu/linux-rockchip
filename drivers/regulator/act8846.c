@@ -797,9 +797,9 @@ static struct act8846_board *act8846_parse_dt(struct i2c_client *i2c)
 void act8846_device_shutdown(void)
 {
 	struct act8846 *act8846 = g_act8846;
-	
+    u8 ret;
 	printk("%s\n",__func__);
-#if 1
+#if 0
 	if (act8846->pmic_hold_gpio) {
 			gpio_direction_output(act8846->pmic_hold_gpio,0);
 			mdelay(100);
@@ -812,7 +812,6 @@ void act8846_device_shutdown(void)
 	ret = act8846_set_bits(act8846, 0xc3,(0x1<<4),(0x1<<4));
 	if (ret < 0) {
 		printk("act8846 set 0xc3 error!\n");
-		return err;
 	}
 #endif
 }
