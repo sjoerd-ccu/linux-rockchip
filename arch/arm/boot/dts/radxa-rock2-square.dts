@@ -259,7 +259,7 @@
 };
     
 &sdmmc {
-		clock-frequency = <50000000>;
+		clock-frequency = <25000000>;
 		lock-freq-min-max = <400000 50000000>;
 		supports-highspeed;
 		supports-sd;
