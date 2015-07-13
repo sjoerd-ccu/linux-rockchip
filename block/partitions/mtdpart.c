@@ -342,6 +342,8 @@ int mtdpart_partition(struct parsed_partitions *state)
         	return 0;
 
 	cmdline = strstr(saved_command_line, "mtdparts=") + 9;
+	if(cmdline - 9 == NULL)
+		return 0;
 	
 	num_parts = parse_cmdline_partitions(n, &parts, 0);
 	if(num_parts < 0)
