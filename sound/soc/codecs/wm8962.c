@@ -2709,31 +2709,31 @@ static int wm8962_add_widgets(struct snd_soc_codec *codec)
 
 	snd_soc_add_controls(codec, wm8962_snd_controls,
 			     ARRAY_SIZE(wm8962_snd_controls));
-	if (pdata && pdata->spk_mono)
-		snd_soc_add_controls(codec, wm8962_spk_mono_controls,
-				     ARRAY_SIZE(wm8962_spk_mono_controls));
-	else
-		snd_soc_add_controls(codec, wm8962_spk_stereo_controls,
-				     ARRAY_SIZE(wm8962_spk_stereo_controls));
+//	if (pdata && pdata->spk_mono)
+//		snd_soc_add_controls(codec, wm8962_spk_mono_controls,
+//				     ARRAY_SIZE(wm8962_spk_mono_controls));
+//	else
+//		snd_soc_add_controls(codec, wm8962_spk_stereo_controls,
+//				     ARRAY_SIZE(wm8962_spk_stereo_controls));
 
 
 	snd_soc_dapm_new_controls(dapm, wm8962_dapm_widgets,
 				  ARRAY_SIZE(wm8962_dapm_widgets));
-	if (pdata && pdata->spk_mono)
-		snd_soc_dapm_new_controls(dapm, wm8962_dapm_spk_mono_widgets,
-					  ARRAY_SIZE(wm8962_dapm_spk_mono_widgets));
-	else
-		snd_soc_dapm_new_controls(dapm, wm8962_dapm_spk_stereo_widgets,
-					  ARRAY_SIZE(wm8962_dapm_spk_stereo_widgets));
+//	if (pdata && pdata->spk_mono)
+//		snd_soc_dapm_new_controls(dapm, wm8962_dapm_spk_mono_widgets,
+//					  ARRAY_SIZE(wm8962_dapm_spk_mono_widgets));
+//	else
+//		snd_soc_dapm_new_controls(dapm, wm8962_dapm_spk_stereo_widgets,
+//					  ARRAY_SIZE(wm8962_dapm_spk_stereo_widgets));
 
 	snd_soc_dapm_add_routes(dapm, wm8962_intercon,
 				ARRAY_SIZE(wm8962_intercon));
-	if (pdata && pdata->spk_mono)
-		snd_soc_dapm_add_routes(dapm, wm8962_spk_mono_intercon,
-					ARRAY_SIZE(wm8962_spk_mono_intercon));
-	else
-		snd_soc_dapm_add_routes(dapm, wm8962_spk_stereo_intercon,
-					ARRAY_SIZE(wm8962_spk_stereo_intercon));
+//	if (pdata && pdata->spk_mono)
+//		snd_soc_dapm_add_routes(dapm, wm8962_spk_mono_intercon,
+//					ARRAY_SIZE(wm8962_spk_mono_intercon));
+//	else
+//		snd_soc_dapm_add_routes(dapm, wm8962_spk_stereo_intercon,
+//					ARRAY_SIZE(wm8962_spk_stereo_intercon));
 
 
 	snd_soc_dapm_disable_pin(dapm, "Beep");
