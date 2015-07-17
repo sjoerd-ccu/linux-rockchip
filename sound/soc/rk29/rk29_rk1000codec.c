@@ -36,6 +36,7 @@ static int rk29_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	int ret;
+	unsigned int rate, mclk;
 	  
 	DBG("Enter::%s----%d\n",__FUNCTION__,__LINE__);    
 
@@ -62,7 +63,35 @@ static int rk29_hw_params(struct snd_pcm_substream *substream,
 		if (ret < 0)
 			return ret;
 
-//设置分频部分，暂时未设置
+	rate = params_rate (params);
+	switch (rate) {
+		case 8000:
+		case 16000:
+		case 24000:
+		case 32000:
+		case 48000:
+		case 64000:
+		case 96000:
+			mclk = 12288000;
+			break;
+		case 11025:
+		case 22050:
+		case 44100:
+		case 88200:
+			mclk = 11289600;
+			break;
+		default:
+			return -EINVAL;
+	}
+
+	snd_soc_dai_set_sysclk(cpu_dai, 0, mclk,  SND_SOC_CLOCK_OUT);
+	/* A value of 3 here means the mclk gets divided by 4, which in turns
+	 * means for 96k samplerate the bit clock gets its minimal divisor of
+	 * 32 */
+	snd_soc_dai_set_clkdiv(cpu_dai, ROCKCHIP_DIV_MCLK, 3);
+	snd_soc_dai_set_clkdiv(cpu_dai, ROCKCHIP_DIV_BCLK,
+		((mclk/4)/rate) - 1);
+
 	return 0;
 }
 
